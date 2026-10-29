@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.sites-runtime/
+.env*
+*.zip
+!public/kinkaramen-waiting-source.zip
+qa-*.html
