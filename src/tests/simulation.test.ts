@@ -5,6 +5,27 @@ const input={total:10,rank:4,now:786,iterations:10_000,seed:20261029};
 const baseline=simulate(input);
 const summary=summarize(baseline,{...input,target:810,tolerance:10});
 describe('fixed seeded event simulation',()=>{
+  it('keeps the expected call near 10:30 for rank 8 even with an 11:30 arrival',()=>{
+    const config={total:8,rank:8,now:600};
+    const x=simulate(config);
+    const early=summarize(x,{...config,target:630,tolerance:10})[0];
+    const late=summarize(x,{...config,target:690,tolerance:10})[0];
+    expect(late.callMean).toBeGreaterThan(628);
+    expect(late.callMean).toBeLessThan(632);
+    expect(late.callMean).toBe(early.callMean);
+    expect(late.callQ10).toBe(early.callQ10);
+    expect(late.callQ90).toBe(early.callQ90);
+    expect(late.missed).toBeGreaterThan(.99);
+    expect(late.mean).toBeGreaterThan(690);
+  });
+  it('retains uncalled probability in call statistics',()=>{
+    const x=createSimulation({...input,iterations:4});
+    x.calls=x.calls.map(()=>new Float64Array([800,807,809,Infinity]));
+    const row=summarize(x,{...input,target:810,tolerance:10})[0];
+    expect(row.callMean).toBeNull();
+    expect(row.callQ10).toBe(800);
+    expect(row.callQ90).toBeNull();
+  });
   it('is reproducible',()=>expect(simulate({...input,iterations:150}).calls).toEqual(simulate({...input,iterations:150}).calls));
   it('uses common scenarios and moving back never advances call time',()=>{
     for(let k=1;k<baseline.calls.length;k++)for(let i=0;i<baseline.iterations;i++)expect(baseline.calls[k][i]).toBeGreaterThanOrEqual(baseline.calls[k-1][i]);

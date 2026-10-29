@@ -6,6 +6,7 @@ export interface CallSimulation { input: SimulationInput; iterations: number; ca
 export interface PredictionInput extends SimulationInput { target: number; tolerance: number }
 export interface Bin { time: number; probability: number; cumulative: number }
 export interface PositionResult {
+  callMean: number | null; callQ10: number | null; callQ90: number | null;
   rank: number; mean: number | null; median: number | null; q10: number | null; q25: number | null; q75: number | null; q90: number | null;
   bins: Bin[]; success: number; beforeWindow: number; afterWindow: number; beforeTarget: number; callBeforeArrival: number; missed: number; uncalled: number; admitted: number;
 }
@@ -72,6 +73,10 @@ export function summarize(out: CallSimulation, input: PredictionInput): Position
   if (![5,10,15].includes(input.tolerance)) throw new Error('도착 후 허용 대기시간은 5, 10, 15분 중 선택해 주세요.');
   const start = Math.floor(input.now / 5) * 5;
   return out.calls.map((samples, k) => {
+    const calls = Array.from(samples).filter(Number.isFinite).sort((a,b)=>a-b);
+    const callMean = calls.length === out.iterations ? calls.reduce((sum,t)=>sum+t,0)/out.iterations : null;
+    const callQ10 = empiricalQuantile(calls, out.iterations, .1);
+    const callQ90 = empiricalQuantile(calls, out.iterations, .9);
     const bins: Bin[] = Array.from({ length: Math.max(1, Math.ceil((out.end - start) / 5)) }, (_, i) => ({ time: start + i * 5, probability: 0, cumulative: 0 }));
     const admitted: number[] = [];
     let success=0, beforeWindow=0, afterWindow=0, beforeTarget=0, callBeforeArrival=0, missed=0, uncalled=0;
@@ -91,6 +96,6 @@ export function summarize(out: CallSimulation, input: PredictionInput): Position
     let cumulative = 0;
     for (const bin of bins) { bin.probability /= out.iterations; cumulative += bin.probability; bin.cumulative=cumulative; }
     const q = (p: number) => empiricalQuantile(admitted, out.iterations, p);
-    return { rank: input.rank + k, mean: admitted.length ? admitted.reduce((a,b)=>a+b,0)/admitted.length:null, median:q(.5),q10:q(.1),q25:q(.25),q75:q(.75),q90:q(.9),bins,success:success/out.iterations,beforeWindow:beforeWindow/out.iterations,afterWindow:afterWindow/out.iterations,beforeTarget:beforeTarget/out.iterations,callBeforeArrival:callBeforeArrival/out.iterations,missed:missed/out.iterations,uncalled:uncalled/out.iterations,admitted:admitted.length/out.iterations };
+    return { callMean, callQ10, callQ90, rank: input.rank + k, mean: admitted.length ? admitted.reduce((a,b)=>a+b,0)/admitted.length:null, median:q(.5),q10:q(.1),q25:q(.25),q75:q(.75),q90:q(.9),bins,success:success/out.iterations,beforeWindow:beforeWindow/out.iterations,afterWindow:afterWindow/out.iterations,beforeTarget:beforeTarget/out.iterations,callBeforeArrival:callBeforeArrival/out.iterations,missed:missed/out.iterations,uncalled:uncalled/out.iterations,admitted:admitted.length/out.iterations };
   });
 }
