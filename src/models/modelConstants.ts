@@ -12,4 +12,4 @@ export const MODEL = Object.freeze({
   maxWaiting: 150,
 });
 export type ModelParameters = typeof MODEL;
-export type ModelRates = Pick<ModelParameters, 'servicePerMinute' | 'cancellationPerTeamMinute' | 'deferPerTeamMinute' | 'arrivalPerMinute' | 'batchOfTwoProbability'>;
+export type ModelRates = { [K in 'servicePerMinute' | 'cancellationPerTeamMinute' | 'deferPerTeamMinute' | 'arrivalPerMinute' | 'batchOfTwoProbability']: number };

@@ -3,6 +3,7 @@ import { MODEL } from '../models/modelConstants';
 import { clock } from '../utils/time';
 import { percent } from '../utils/probability';
 import type { PredictionResult } from '../models/simulation';
+import { RankTimeline } from './rank-timeline';
 export function PredictionSummary({result}:{result:PredictionResult}) {
   const current=result.positions[0], recommended=result.positions.find(p=>p.rank===result.recommendedRank);
   const maintain=recommended?.rank===current.rank;
@@ -14,5 +15,5 @@ export function PredictionSummary({result}:{result:PredictionResult}) {
   <div className="irreversible"><Info size={16}/><span>순서를 미루면 다시 앞으로 당길 수 없어요. 실제 변경은 캐치테이블에서 직접 해 주세요.</span></div>
   <section className="summary-card card" aria-label="현재 순서 예상 결과"><div className="summary-heading"><h3>현재 {current.rank}번째라면</h3><span>{clock(result.input.now)} 기준</span></div><div className="summary-grid"><div><span className="stat-label">예상 호출 · 평균</span><strong className="stat-value">{clock(current.callMean)}</strong><small>{current.callMean===null?'계산 범위 밖 호출 포함':`약 ${Math.max(0,Math.round(current.callMean-result.input.now))}분 후`}</small></div><div><span className="stat-label">호출 80% 구간</span><strong className="stat-range">{clock(current.callQ10)}<span> ~ </span>{clock(current.callQ90)}</strong><small>10~90% 분위수</small></div><div><span className="stat-label">시간 내 성공확률</span><strong className="stat-value blue-text">{percent(current.success)}</strong><small>{clock(result.input.target-MODEL.graceMinutes)}~{clock(result.input.target+result.input.tolerance)}</small></div></div>
     {(current.uncalled>0||current.missed>0)&&<p className="censor-note"><TriangleAlert size={14}/>범위 내 입장 실패 {percent(1-current.admitted)} · 호출 예상은 도착시간과 무관하게 계산해요.</p>}
-  </section></>;
+  </section><RankTimeline rank={result.input.rank} now={result.input.now} milestones={result.rankTimeline}/></>;
 }

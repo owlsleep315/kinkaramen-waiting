@@ -1,4 +1,4 @@
-import { createSimulation, runScenarios, summarize, type CallSimulation, type PredictionInput } from '../models/simulation';
+import { createSimulation, runScenarios, summarize, summarizeRankTimeline, type CallSimulation, type PredictionInput } from '../models/simulation';
 import { choosePosition } from '../models/optimizer';
 import { MODEL } from '../models/modelConstants';
 const cache = new Map<string, CallSimulation>();
@@ -21,6 +21,6 @@ self.onmessage = async (event: MessageEvent<{id:number;input:PredictionInput}>) 
       cache.set(key,simulation);
     }
     const positions=summarize(simulation,input);
-    self.postMessage({id,result:{input,positions,recommendedRank:choosePosition(positions,input.rank),iterations:simulation.iterations,end:simulation.end,censorReason:simulation.censorReason}});
+    self.postMessage({id,result:{input,positions,rankTimeline:summarizeRankTimeline(simulation),recommendedRank:choosePosition(positions,input.rank),iterations:simulation.iterations,end:simulation.end,censorReason:simulation.censorReason}});
   } catch(error) { self.postMessage({id,error:error instanceof Error?error.message:'계산 중 오류가 발생했어요.'}); }
 };

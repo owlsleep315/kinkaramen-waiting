@@ -2,7 +2,8 @@ import { MODEL, type ModelRates } from './modelConstants';
 import { ratesAt, validateQueue } from './waitingModel';
 import { randomFromSeed, empiricalQuantile } from '../utils/probability';
 export interface SimulationInput { total: number; rank: number; now: number; seed?: number; iterations?: number }
-export interface CallSimulation { input: SimulationInput; iterations: number; calls: Float64Array[]; end: number; censorReason: 'horizon' }
+export interface CallSimulation { input: SimulationInput; iterations: number; calls: Float64Array[]; rankTimes: Float64Array[]; end: number; censorReason: 'horizon' }
+export interface RankMilestone { rank: number; mean: number | null }
 export interface PredictionInput extends SimulationInput { target: number; tolerance: number }
 export interface Bin { time: number; probability: number; cumulative: number }
 export interface PositionResult {
@@ -10,7 +11,7 @@ export interface PositionResult {
   rank: number; mean: number | null; median: number | null; q10: number | null; q25: number | null; q75: number | null; q90: number | null;
   bins: Bin[]; success: number; beforeWindow: number; afterWindow: number; beforeTarget: number; callBeforeArrival: number; missed: number; uncalled: number; admitted: number;
 }
-export interface PredictionResult { input: PredictionInput; positions: PositionResult[]; recommendedRank: number | null; iterations: number; end: number; censorReason: CallSimulation['censorReason'] }
+export interface PredictionResult { input: PredictionInput; positions: PositionResult[]; rankTimeline: RankMilestone[]; recommendedRank: number | null; iterations: number; end: number; censorReason: CallSimulation['censorReason'] }
 export function createSimulation(input: SimulationInput): CallSimulation {
   const err = validateQueue(input.total, input.rank);
   if (err) throw new Error(err);
@@ -18,7 +19,7 @@ export function createSimulation(input: SimulationInput): CallSimulation {
   const iterations = input.iterations ?? MODEL.iterations;
   if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100_000) throw new Error('Invalid simulation size');
   const end = input.now + MODEL.horizonMinutes;
-  return { input: { ...input }, iterations, end, censorReason: 'horizon', calls: Array.from({ length: input.total - input.rank + 1 }, () => new Float64Array(iterations).fill(Infinity)) };
+  return { input: { ...input }, iterations, end, censorReason: 'horizon', rankTimes: Array.from({ length: input.rank - 1 }, () => new Float64Array(iterations).fill(Infinity)), calls: Array.from({ length: input.total - input.rank + 1 }, () => new Float64Array(iterations).fill(Infinity)) };
 }
 /**
  * Counterfactual ranks share the same arrival/cancellation/service trajectory.
@@ -39,6 +40,7 @@ export function runScenarios(out: CallSimulation, from: number, to: number, p: M
       const dt = sum > 0 ? -Math.log(random()) / sum : Infinity;
       if (time + dt >= boundary) { time = boundary; continue; }
       time += dt;
+      const previousRank = ranks[0];
       const event = random() * sum;
       if (event < rates.service) {
         const batch = random() < p.batchOfTwoProbability ? 2 : 1;
@@ -62,11 +64,21 @@ export function runScenarios(out: CallSimulation, from: number, to: number, p: M
           }
         }
       } else total++;
+      // Observe the unchanged current-rank path; record thresholds skipped by a batch too.
+      for (let rank = previousRank - 1; rank >= Math.max(1, ranks[0]); rank--) {
+        out.rankTimes[input.rank - 1 - rank][i] = time;
+      }
     }
   }
 }
 export function simulate(input: SimulationInput, p: ModelRates = MODEL): CallSimulation {
   const out = createSimulation(input); runScenarios(out, 0, out.iterations, p); return out;
+}
+export function summarizeRankTimeline(out: CallSimulation): RankMilestone[] {
+  return out.rankTimes.map((samples, index) => {
+    const sum = samples.reduce((total, time) => total + time, 0);
+    return { rank: out.input.rank - 1 - index, mean: Number.isFinite(sum) ? sum / out.iterations : null };
+  });
 }
 export function summarize(out: CallSimulation, input: PredictionInput): PositionResult[] {
   if (!Number.isFinite(input.target) || input.target <= input.now || input.target >= 1440) throw new Error('도착시간은 현재보다 늦은 오늘 시간으로 선택해 주세요.');
