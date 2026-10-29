@@ -6,7 +6,7 @@ let latest = 0;
 self.onmessage = async (event: MessageEvent<{id:number;input:PredictionInput}>) => {
   const {id,input}=event.data; latest=id;
   try {
-    const key=JSON.stringify([MODEL.version,input.total,input.rank,input.now,input.seed??MODEL.seed,input.iterations??MODEL.iterations]);
+    const key=JSON.stringify([input.total,input.rank,input.now,input.seed??MODEL.seed,input.iterations??MODEL.iterations]);
     let simulation=cache.get(key);
     if (!simulation) {
       simulation=createSimulation(input);
@@ -21,6 +21,6 @@ self.onmessage = async (event: MessageEvent<{id:number;input:PredictionInput}>) 
       cache.set(key,simulation);
     }
     const positions=summarize(simulation,input);
-    self.postMessage({id,result:{input,positions,recommendedRank:choosePosition(positions,input.rank),iterations:simulation.iterations,end:simulation.end,censorReason:simulation.censorReason,modelVersion:MODEL.version}});
+    self.postMessage({id,result:{input,positions,recommendedRank:choosePosition(positions,input.rank),iterations:simulation.iterations,end:simulation.end,censorReason:simulation.censorReason}});
   } catch(error) { self.postMessage({id,error:error instanceof Error?error.message:'계산 중 오류가 발생했어요.'}); }
 };

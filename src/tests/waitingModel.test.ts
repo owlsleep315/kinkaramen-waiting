@@ -37,12 +37,12 @@ describe('queue rules',()=>{
     expect(19*c).toBeGreaterThan(2*c);
     expect(1-Math.exp(-19*c*10)).toBeGreaterThan(1-Math.exp(-2*c*10));
   });
-  it('enforces opening and registration boundaries',()=>{
-    expect(ratesAt(659,10).service).toBe(0);
-    expect(ratesAt(660,10).service).toBeGreaterThan(0);
-    expect(ratesAt(711,10).arrival).toBeGreaterThan(0);
-    expect(ratesAt(712,10).arrival).toBe(0);
-    expect(ratesAt(870,10).service).toBe(0);
+  it('does not change service or registrations at former clock boundaries',()=>{
+    for(const time of [600,629,630,659,660,711,712,869,870,900]) {
+      expect(ratesAt(time,10)).toEqual(ratesAt(720,10));
+      expect(ratesAt(time,10).service).toBeGreaterThan(0);
+      expect(ratesAt(time,10).arrival).toBeGreaterThan(0);
+    }
   });
   it('model constants are frozen and input cannot mutate them',()=>{
     const snapshot=JSON.stringify(MODEL);

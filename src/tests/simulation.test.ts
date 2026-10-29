@@ -17,37 +17,50 @@ describe('fixed seeded event simulation',()=>{
     const avg=(x:Float64Array)=>Array.from(x).reduce((s,v)=>s+Math.min(v,870),0)/x.length;
     expect(avg(fast.calls[0])).toBeLessThan(avg(slow.calls[0])-5);
   });
-  it('preserves mass including closing censoring and arrival misses',()=>{
-    for(const row of [...summary,...summarize(baseline,{...input,target:810,tolerance:10,arrival:810}),...summarize(simulate({...input,now:865}),{...input,now:865,target:880,tolerance:5})]){
+  it('preserves mass including horizon censoring and arrival misses',()=>{
+    for(const row of [...summary,...summarize(baseline,{...input,target:810,tolerance:10}),...summarize(simulate({...input,now:865}),{...input,now:865,target:880,tolerance:5})]){
       expect(row.bins.reduce((s,b)=>s+b.probability,0)+row.missed+row.uncalled).toBeCloseTo(1,12);
       expect(row.beforeWindow+row.success+row.afterWindow+row.missed+row.uncalled).toBeCloseTo(1,12);
       expect(row.callBeforeArrival).toBeGreaterThanOrEqual(row.missed);
     }
   });
   it('CDF never decreases and does not normalize away missed entries',()=>{
-    const row=summarize(baseline,{...input,target:810,tolerance:10,arrival:810})[0];
+    const row=summarize(baseline,{...input,target:810,tolerance:10})[0];
     let prev=0;for(const bin of row.bins){expect(bin.cumulative).toBeGreaterThanOrEqual(prev);prev=bin.cumulative;}
     expect(prev).toBeCloseTo(row.admitted,12);expect(prev).toBeLessThan(1);
   });
-  it('makes no calls before opening, including rank 1',()=>{
-    const x=simulate({total:5,rank:1,now:640,iterations:2000});
-    for(const calls of x.calls)for(const t of calls)expect(t).toBeGreaterThanOrEqual(660);
+  it('allows calls outside former operating hours',()=>{
+    for(const now of [600,870,900]) {
+      const x=simulate({total:1,rank:1,now,iterations:200});
+      expect(x.end).toBe(now+MODEL.horizonMinutes);
+      expect(Array.from(x.calls[0]).some(t=>t<now+10)).toBe(true);
+    }
   });
   it('rank 1 has a nonzero call wait matching the service event rate',()=>{
     const x=simulate({total:1,rank:1,now:712,iterations:10_000});
     const mean=Array.from(x.calls[0]).reduce((s,t)=>s+t-712,0)/x.iterations;
     expect(mean).toBeGreaterThan(3.8);expect(mean).toBeLessThan(4.8);
   });
-  it('rejects closed, pre-registration and past-target inputs',()=>{
-    expect(()=>createSimulation({...input,now:629})).toThrow();
-    expect(()=>createSimulation({...input,now:870})).toThrow();
-    expect(()=>summarize(baseline,{...input,target:780,tolerance:10})).toThrow();
-    expect(()=>summarize(baseline,{...input,target:810,tolerance:10,arrival:780})).toThrow();
+  it('rejects invalid current times, past arrivals and invalid tolerances',()=>{
+    for(const now of [-1,1440,NaN,Infinity]) expect(()=>createSimulation({...input,now})).toThrow();
+    for(const target of [780,786,1440,NaN]) expect(()=>summarize(baseline,{...input,target,tolerance:10})).toThrow();
+    expect(()=>summarize(baseline,{...input,target:810,tolerance:0})).toThrow();
+  });
+  it.each([5,10,15])('uses inclusive -3 to +%i call boundaries',tolerance=>{
+    const x=createSimulation({...input,iterations:8});
+    x.calls=x.calls.map(()=>new Float64Array([806.999,807,809,810,810+tolerance,810+tolerance+.001,Infinity,800]));
+    const row=summarize(x,{...input,target:810,tolerance})[0];
+    expect(row.success).toBe(4/8);
+    expect(row.missed).toBe(2/8);
+    expect(row.afterWindow).toBe(1/8);
+    expect(row.uncalled).toBe(1/8);
+    expect(row.beforeWindow).toBe(0);
+    expect(row.success+row.missed+row.afterWindow+row.uncalled).toBe(1);
   });
   it('handles a grace boundary, arrival waiting, and unconditional quantiles exactly',()=>{
     const x=createSimulation({...input,iterations:4});
     x.calls=x.calls.map(()=>new Float64Array([800,807,809,Infinity]));
-    const row=summarize(x,{...input,target:810,tolerance:5,arrival:810})[0];
+    const row=summarize(x,{...input,target:810,tolerance:5})[0];
     expect(row.missed).toBe(.25);expect(row.uncalled).toBe(.25);expect(row.success).toBe(.5);
     expect(row.mean).toBe(810);expect(row.median).toBe(810);expect(row.q90).toBeNull();
     expect(row.callBeforeArrival).toBe(.75);

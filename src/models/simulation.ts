@@ -1,24 +1,23 @@
 import { MODEL, type ModelRates } from './modelConstants';
-import { nextBoundary, ratesAt, validateQueue } from './waitingModel';
+import { ratesAt, validateQueue } from './waitingModel';
 import { randomFromSeed, empiricalQuantile } from '../utils/probability';
 export interface SimulationInput { total: number; rank: number; now: number; seed?: number; iterations?: number }
-export interface CallSimulation { input: SimulationInput; iterations: number; calls: Float64Array[]; end: number; censorReason: 'closing' | 'horizon' }
-export interface PredictionInput extends SimulationInput { target: number; tolerance: number; arrival?: number }
+export interface CallSimulation { input: SimulationInput; iterations: number; calls: Float64Array[]; end: number; censorReason: 'horizon' }
+export interface PredictionInput extends SimulationInput { target: number; tolerance: number }
 export interface Bin { time: number; probability: number; cumulative: number }
 export interface PositionResult {
   rank: number; mean: number | null; median: number | null; q10: number | null; q25: number | null; q75: number | null; q90: number | null;
   bins: Bin[]; success: number; beforeWindow: number; afterWindow: number; beforeTarget: number; callBeforeArrival: number; missed: number; uncalled: number; admitted: number;
 }
-export interface PredictionResult { input: PredictionInput; positions: PositionResult[]; recommendedRank: number | null; iterations: number; end: number; censorReason: CallSimulation['censorReason']; modelVersion: string }
+export interface PredictionResult { input: PredictionInput; positions: PositionResult[]; recommendedRank: number | null; iterations: number; end: number; censorReason: CallSimulation['censorReason'] }
 export function createSimulation(input: SimulationInput): CallSimulation {
   const err = validateQueue(input.total, input.rank);
   if (err) throw new Error(err);
-  if (!Number.isFinite(input.now) || input.now < MODEL.registrationOpen) throw new Error('웨이팅 등록은 10:30부터 시작해요. 등록 후 예측해 주세요.');
-  if (input.now >= MODEL.serviceClose) throw new Error('모델의 점심 영업시간(11:00~14:30)이 끝났어요.');
+  if (!Number.isFinite(input.now) || input.now < 0 || input.now >= 1440) throw new Error('현재시각은 오늘의 유효한 시간이어야 해요.');
   const iterations = input.iterations ?? MODEL.iterations;
   if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100_000) throw new Error('Invalid simulation size');
-  const end = Math.min(MODEL.serviceClose, input.now + MODEL.horizonMinutes);
-  return { input: { ...input }, iterations, end, censorReason: end === MODEL.serviceClose ? 'closing' : 'horizon', calls: Array.from({ length: input.total - input.rank + 1 }, () => new Float64Array(iterations).fill(Infinity)) };
+  const end = input.now + MODEL.horizonMinutes;
+  return { input: { ...input }, iterations, end, censorReason: 'horizon', calls: Array.from({ length: input.total - input.rank + 1 }, () => new Float64Array(iterations).fill(Infinity)) };
 }
 /**
  * Counterfactual ranks share the same arrival/cancellation/service trajectory.
@@ -35,7 +34,7 @@ export function runScenarios(out: CallSimulation, from: number, to: number, p: M
     while (alive > 0 && time < end) {
       const rates = ratesAt(time, total, p);
       const sum = rates.service + rates.cancel + rates.defer + rates.arrival;
-      const boundary = nextBoundary(time, end);
+      const boundary = end;
       const dt = sum > 0 ? -Math.log(random()) / sum : Infinity;
       if (time + dt >= boundary) { time = boundary; continue; }
       time += dt;
@@ -69,9 +68,8 @@ export function simulate(input: SimulationInput, p: ModelRates = MODEL): CallSim
   const out = createSimulation(input); runScenarios(out, 0, out.iterations, p); return out;
 }
 export function summarize(out: CallSimulation, input: PredictionInput): PositionResult[] {
-  if (!Number.isFinite(input.target) || input.target <= input.now || input.target >= 1440) throw new Error('목표시간은 현재보다 늦은 오늘 시간으로 선택해 주세요.');
-  if (![5,10,15].includes(input.tolerance)) throw new Error('허용 오차는 5, 10, 15분 중 선택해 주세요.');
-  if (input.arrival !== undefined && (!Number.isFinite(input.arrival) || input.arrival < input.now || input.arrival >= 1440)) throw new Error('도착 예정시간은 현재 이후의 오늘 시간으로 입력해 주세요.');
+  if (!Number.isFinite(input.target) || input.target <= input.now || input.target >= 1440) throw new Error('도착시간은 현재보다 늦은 오늘 시간으로 선택해 주세요.');
+  if (![5,10,15].includes(input.tolerance)) throw new Error('도착 후 허용 대기시간은 5, 10, 15분 중 선택해 주세요.');
   const start = Math.floor(input.now / 5) * 5;
   return out.calls.map((samples, k) => {
     const bins: Bin[] = Array.from({ length: Math.max(1, Math.ceil((out.end - start) / 5)) }, (_, i) => ({ time: start + i * 5, probability: 0, cumulative: 0 }));
@@ -79,14 +77,13 @@ export function summarize(out: CallSimulation, input: PredictionInput): Position
     let success=0, beforeWindow=0, afterWindow=0, beforeTarget=0, callBeforeArrival=0, missed=0, uncalled=0;
     for (const call of samples) {
       if (!Number.isFinite(call)) { uncalled++; continue; }
-      if (input.arrival !== undefined && call < input.arrival) callBeforeArrival++;
-      if (input.arrival !== undefined && input.arrival > call + MODEL.graceMinutes) { missed++; continue; }
-      const entry = Math.max(call, input.arrival ?? call);
+      if (call < input.target) callBeforeArrival++;
+      if (call < input.target - MODEL.graceMinutes) { missed++; continue; }
+      const entry = Math.max(call, input.target);
       if (entry >= out.end) { uncalled++; continue; }
       admitted.push(entry);
       bins[Math.min(bins.length-1, Math.floor((entry-start)/5))].probability++;
-      if (entry < input.target - input.tolerance) beforeWindow++;
-      else if (entry <= input.target + input.tolerance) success++;
+      if (call <= input.target + input.tolerance) success++;
       else afterWindow++;
       if (entry <= input.target) beforeTarget++;
     }

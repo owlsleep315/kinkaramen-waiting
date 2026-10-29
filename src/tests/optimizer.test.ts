@@ -22,8 +22,8 @@ describe('recommendation',()=>{
   it('recommends maintaining the rank when it is best',()=>{
     expect(choosePosition(summarize(calls,{...input,target:793,tolerance:5}),4)).toBe(4);
   });
-  it('does not force an impossible recommendation after closing',()=>{
-    const impossible=summarize(calls,{...input,target:940,tolerance:5});
+  it('does not force an impossible recommendation beyond the calculation horizon',()=>{
+    const impossible=summarize(calls,{...input,target:1200,tolerance:5});
     expect(choosePosition(impossible,4)).toBeNull();
   });
 });

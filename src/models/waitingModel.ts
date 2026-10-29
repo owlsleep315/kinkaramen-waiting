@@ -28,14 +28,11 @@ export function effectiveDeferRate(total: number, rank: number, d: number = MODE
   for (let j = 1; j < rank; j++) sum += (total - rank + 1) / (total - j);
   return d * sum;
 }
-export function ratesAt(time: number, total: number, p: ModelRates = MODEL) {
+export function ratesAt(_time: number, total: number, p: ModelRates = MODEL) {
   return {
-    service: time >= MODEL.serviceOpen && time < MODEL.serviceClose ? p.servicePerMinute / (1 + p.batchOfTwoProbability) : 0,
+    service: p.servicePerMinute / (1 + p.batchOfTwoProbability),
     cancel: Math.max(0, total - 1) * p.cancellationPerTeamMinute,
     defer: Math.max(0, total - 1) * p.deferPerTeamMinute,
-    arrival: time >= MODEL.registrationOpen && time < MODEL.registrationClose ? p.arrivalPerMinute : 0,
+    arrival: p.arrivalPerMinute,
   };
-}
-export function nextBoundary(time: number, end: number) {
-  return Math.min(...[MODEL.serviceOpen, MODEL.registrationClose, end].filter(t => t > time));
 }
