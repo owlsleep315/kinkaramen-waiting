@@ -47,8 +47,10 @@ describe('interval-censored data', () => {
   it('fits deterministic posterior coefficients including boundary-crossing exposure', () => {
     expect(exposures(718, 721)).toEqual([2, 1, 0]);
     const refit = fitRates(buildIntervals(raw as Observation[]).intervals);
-    expect(refit.rates).toEqual(fitted.rates);
-    expect(refit.posteriorDraws).toEqual(fitted.posteriorDraws);
+    // V8/libm can differ by ~1e-16 across Node 22/24; preserve all 960 draw checks.
+    refit.rates.forEach((rate, i) => expect(rate).toBeCloseTo(fitted.rates[i], 12));
+    expect(refit.posteriorDraws).toHaveLength(fitted.posteriorDraws.length);
+    refit.posteriorDraws.forEach((draw, i) => draw.forEach((rate, b) => expect(rate).toBeCloseTo(fitted.posteriorDraws[i][b], 12)));
   });
   it('falls back to the prior with insufficient data and no infinite fitted rates', () => {
     fitRates([]).rates.forEach(r => expect(r).toBeCloseTo(.3, 1));
