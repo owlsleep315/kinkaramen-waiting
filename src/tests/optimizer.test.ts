@@ -1,29 +1,19 @@
-import { describe,expect,it } from 'vitest';
-import { simulate,summarize } from '../models/simulation';
+import { describe, expect, it } from 'vitest';
+import { simulate, summarize } from '../models/simulation';
 import { choosePosition } from '../models/optimizer';
-const input={total:10,rank:4,now:786,iterations:10_000,seed:20261029};
-const calls=simulate(input);
-const rows=summarize(calls,{...input,target:810,tolerance:10});
-describe('recommendation',()=>{
-  it('never suggests moving forward and maximizes success',()=>{
-    const rank=choosePosition(rows,4)!;
-    expect(rank).toBeGreaterThanOrEqual(4);expect(rank).toBeLessThanOrEqual(10);
-    expect(rows.find(p=>p.rank===rank)!.success).toBe(Math.max(...rows.map(p=>p.success)));
+const input = { rank: 1, now: 786, iterations: 2000 }, out = simulate(input);
+const positions = (target: number) => summarize(out, { ...input, target, tolerance: 5 });
+describe('theoretical optimal rank', () => {
+  it('keeps the current first rank for imminent arrival', () => expect(choosePosition(positions(788))).toBe(1));
+  it('suggests a later rank for later arrival', () => expect(choosePosition(positions(810))).toBeGreaterThan(1));
+  it('shows an earlier optimum even if the user is currently 30th', () => {
+    const rows = summarize(out, { ...input, rank: 30, target: 800, tolerance: 5 });
+    expect(choosePosition(rows)).toBeLessThan(30);
+    expect(rows.find(r => r.rank === choosePosition(rows))!.success).toBe(Math.max(...rows.map(r => r.success)));
   });
-  it('a later target can select a later rank',()=>{
-    const early=choosePosition(summarize(calls,{...input,target:800,tolerance:5}),4)!;
-    const late=choosePosition(summarize(calls,{...input,target:820,tolerance:5}),4)!;
-    expect(late).toBeGreaterThan(early);
+  it('ties prefer less missed-call risk, then smaller rank', () => {
+    const base = positions(810)[0];
+    expect(choosePosition([{ ...base, rank: 4, success: .4, missed: .2 }, { ...base, rank: 5, success: .4, missed: .1 }, { ...base, rank: 6, success: .4, missed: .1 }])).toBe(5);
   });
-  it('ties prefer less early-call risk, then less movement',()=>{
-    const base=rows[0];
-    expect(choosePosition([{...base,rank:4,success:.4,callBeforeArrival:.2},{...base,rank:5,success:.4,callBeforeArrival:.1},{...base,rank:6,success:.4,callBeforeArrival:.1}],4)).toBe(5);
-  });
-  it('recommends maintaining the rank when it is best',()=>{
-    expect(choosePosition(summarize(calls,{...input,target:793,tolerance:5}),4)).toBe(4);
-  });
-  it('does not force an impossible recommendation beyond the calculation horizon',()=>{
-    const impossible=summarize(calls,{...input,target:1200,tolerance:5});
-    expect(choosePosition(impossible,4)).toBeNull();
-  });
+  it('does not invent a recommendation past the calculation horizon', () => expect(choosePosition(positions(1200))).toBeNull());
 });

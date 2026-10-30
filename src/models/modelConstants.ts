@@ -1,15 +1,14 @@
-/** Fixed at development time. Never derive or mutate these values from user inputs. */
+import fitted from '../data/fittedModel.json';
+import { BEHAVIOR } from './intervalModel';
 export const MODEL = Object.freeze({
-  servicePerMinute: 23 / 86,
-  cancellationPerTeamMinute: 2 / 1518,
-  deferPerTeamMinute: 0.0005,
-  arrivalPerMinute: 34 / 71,
-  batchOfTwoProbability: 0.15,
+  servicePerMinute: fitted.posterior.mean,
+  cancellationPerTeamMinute: BEHAVIOR.cancellation,
+  deferPerTeamMinute: BEHAVIOR.defer,
+  deferCrossingProbability: BEHAVIOR.crossing,
   graceMinutes: 3,
   horizonMinutes: 360,
   iterations: 10_000,
-  seed: 20261029,
-  maxWaiting: 150,
+  seed: 20261030,
+  maxRank: 150,
 });
-export type ModelParameters = typeof MODEL;
-export type ModelRates = { [K in 'servicePerMinute' | 'cancellationPerTeamMinute' | 'deferPerTeamMinute' | 'arrivalPerMinute' | 'batchOfTwoProbability']: number };
+export const KINKA_POSTERIOR = fitted.posterior;

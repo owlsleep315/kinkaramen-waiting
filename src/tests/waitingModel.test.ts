@@ -1,53 +1,54 @@
-import { describe,expect,it } from 'vitest';
-import { MODEL } from '../models/modelConstants';
-import { effectiveDeferRate,ratesAt,transition,validateQueue } from '../models/waitingModel';
-describe('queue rules',()=>{
-  it('rejects invalid ranks, fractional counts, and excessive queues',()=>{
-    for(const [w,r] of [[10,11],[0,1],[10,0],[10,2.5],[151,1],[NaN,1]])expect(validateQueue(w,r)).not.toBeNull();
-    expect(validateQueue(10,1)).toBeNull();expect(validateQueue(10,10)).toBeNull();
+import { describe, expect, it } from 'vitest';
+import { validateRank, localModel, rankRate } from '../models/waitingModel';
+import { MODEL, KINKA_POSTERIOR } from '../models/modelConstants';
+import { behaviorRate, decreaseDistribution, fitService, logTransition } from '../models/intervalModel';
+import type { Observation } from '../models/observations';
+const rows: Observation[] = [{ id: '1', date: '2026-10-30', time: 720, rank: 20, kind: 'observation' }, { id: '2', date: '2026-10-30', time: 730, rank: 16, kind: 'observation' }];
+describe('rank-only model and local updates', () => {
+  it('validates ranks without a total', () => { for (const r of [0, -1, 151, 2.5, NaN]) expect(validateRank(r)).not.toBeNull(); expect(validateRank(1)).toBeNull(); expect(validateRank(150)).toBeNull(); });
+  it('more teams ahead add cancellation and effective defer, not final call hazards', () => { expect(rankRate(1)).toBe(MODEL.servicePerMinute); expect(rankRate(30) - rankRate(1)).toBeCloseTo(29 * behaviorRate); });
+  it.each([{ records: [] }, { records: [rows[0]] }])('uses the Kinka posterior with fewer than two records', ({ records }) => { expect(localModel(records, '2026-10-30', 740).posterior).toBe(KINKA_POSTERIOR); });
+  it('shrinks new speed toward Kinka and never adds observed decreases twice', () => {
+    const info = localModel(rows, '2026-10-30', 740);
+    expect(info.minutes).toBe(10); expect(info.count).toBe(4);
+    expect(info.posterior.mean).toBeGreaterThan(MODEL.servicePerMinute);
+    expect(info.posterior.mean).toBeLessThan(.4);
   });
-  it('cancellation behind changes only total; ahead also advances rank',()=>{
-    const s={total:10,rank:4,called:false};
-    expect(transition(s,{type:'cancel',position:9})).toEqual({total:9,rank:4,called:false});
-    expect(transition(s,{type:'cancel',position:2})).toEqual({total:9,rank:3,called:false});
+  it('longer zero-decrease observations slow the estimate', () => {
+    const fast = localModel(rows, '2026-10-30', 780).posterior.mean;
+    const slow = localModel([...rows, { ...rows[1], id: '3', time: 780 }], '2026-10-30', 780);
+    expect(slow.posterior.mean).toBeLessThan(fast / 2);
   });
-  it('only an ahead team deferring across the user advances the user',()=>{
-    const s={total:10,rank:4,called:false};
-    expect(transition(s,{type:'defer',position:1,destination:4})).toEqual({...s,rank:3});
-    expect(transition(s,{type:'defer',position:1,destination:3})).toEqual(s);
-    expect(transition(s,{type:'defer',position:6,destination:10})).toEqual(s);
-    expect(s.rank).toBe(4);
+  it('self-defer affects state but contributes no speed information', () => {
+    const info = localModel([...rows, { ...rows[1], id: '3', time: 735, rank: 30, kind: 'self-defer' }], '2026-10-30', 740);
+    expect(info.posterior).toEqual(localModel(rows, '2026-10-30', 740).posterior);
+    expect(info.excluded).toBe(1);
   });
-  it('own defer is not admission and cannot move forward',()=>{
-    const s={total:10,rank:4,called:false};
-    expect(transition(s,{type:'self-defer',destination:6})).toEqual({...s,rank:6});
-    expect(()=>transition(s,{type:'self-defer',destination:3})).toThrow();
+  it('does not merge yesterday or future records', () => {
+    expect(localModel(rows, '2026-10-31', 740).intervals).toBe(0);
+    expect(localModel(rows, '2026-10-30', 725).intervals).toBe(0);
   });
-  it('first rank is not called until a service event and batches are allowed',()=>{
-    expect(transition({total:5,rank:1,called:false},{type:'arrival'}).called).toBe(false);
-    expect(transition({total:5,rank:2,called:false},{type:'service',batch:2}).called).toBe(true);
+  it('zero data Gamma integration recovers the prior mean', () => { expect(fitService([]).mean).toBeCloseTo(23 / 86, 6); });
+  it('matches Poisson counts when behavior hazards vanish', () => {
+    expect(Math.exp(logTransition(10, 8, 7, .3, 0))).toBeCloseTo(Math.exp(-2.1) * 2.1 ** 2 / 2, 12);
+    expect(Math.exp(logTransition(10, 10, 7, .3, 0))).toBeCloseTo(Math.exp(-2.1), 12);
   });
-  it('follows exact uniform destination crossing probability',()=>{
-    expect(effectiveDeferRate(5,3,1)).toBeCloseTo(3/4+3/3,12);
-    expect(effectiveDeferRate(5,1,1)).toBe(0);
-    expect(effectiveDeferRate(10,4)).toBeGreaterThan(effectiveDeferRate(4,4));
-  });
-  it('more teams ahead create more cancellation opportunities',()=>{
-    const c=MODEL.cancellationPerTeamMinute;
-    expect(19*c).toBeGreaterThan(2*c);
-    expect(1-Math.exp(-19*c*10)).toBeGreaterThan(1-Math.exp(-2*c*10));
-  });
-  it('does not change service or registrations at former clock boundaries',()=>{
-    for(const time of [600,629,630,659,660,711,712,869,870,900]) {
-      expect(ratesAt(time,10)).toEqual(ratesAt(720,10));
-      expect(ratesAt(time,10).service).toBeGreaterThan(0);
-      expect(ratesAt(time,10).arrival).toBeGreaterThan(0);
+  it('exact interval formula agrees with independent CTMC uniformization', () => {
+    const rank = 20, t = 17, mu = .29, q = rankRate(rank, mu);
+    let vector = new Array(rank + 1).fill(0); vector[rank] = 1;
+    const result = new Array(rank + 1).fill(0);
+    let weight = Math.exp(-q * t);
+    for (let n = 0; n < 160; n++) {
+      for (let r = 0; r <= rank; r++) result[r] += weight * vector[r];
+      const next = new Array(rank + 1).fill(0); next[0] = vector[0];
+      for (let r = 1; r <= rank; r++) { const p = rankRate(r, mu) / q; next[r] += vector[r] * (1 - p); next[r - 1] += vector[r] * p; }
+      vector = next; weight *= q * t / (n + 1);
     }
+    for (let r = 1; r <= rank; r++) expect(Math.exp(logTransition(rank, r, t, mu))).toBeCloseTo(result[r], 12);
+    expect(result.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 12);
   });
-  it('model constants are frozen and input cannot mutate them',()=>{
-    const snapshot=JSON.stringify(MODEL);
-    expect(Object.isFrozen(MODEL)).toBe(true);
-    transition({total:32,rank:24,called:false},{type:'self-defer',destination:32});
-    expect(JSON.stringify(MODEL)).toBe(snapshot);
+  it('long interval count forecasts keep all probability including rank-one saturation', () => {
+    const p = decreaseDistribution(3, 600, KINKA_POSTERIOR);
+    expect(p.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 10); expect(p[2]).toBeGreaterThan(.999);
   });
 });
