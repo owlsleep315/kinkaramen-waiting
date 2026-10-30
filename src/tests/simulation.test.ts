@@ -1,6 +1,6 @@
 import { describe,expect,it } from 'vitest';
-import { MODEL } from '../../scripts/legacy/modelConstants';
-import { createSimulation,simulate,summarize } from '../../scripts/legacy/simulation';
+import { MODEL } from '../models/modelConstants';
+import { createSimulation,simulate,summarize } from '../models/simulation';
 const input={total:10,rank:4,now:786,iterations:10_000,seed:20261029};
 const baseline=simulate(input);
 const summary=summarize(baseline,{...input,target:810,tolerance:10});

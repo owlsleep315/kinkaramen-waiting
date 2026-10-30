@@ -1,23 +1,19 @@
-import type { PredictionResult } from '../models/simulation';
+import { ArrowRight, Check, Info, Sparkles, TriangleAlert } from 'lucide-react';
+import { MODEL } from '../models/modelConstants';
 import { clock } from '../utils/time';
 import { percent } from '../utils/probability';
-export function PredictionSummary({ result }: { result: PredictionResult }) {
-  const current = result.positions[result.input.rank - 1];
-  const best = result.recommendedRank ? result.positions[result.recommendedRank - 1] : null;
-  const actionable = result.feasibleRank ? result.positions[result.feasibleRank - 1] : null;
-  const ahead = best && best.rank < current.rank;
-  return <><section className="card summary-card"><span className="eyebrow">현재 {current.rank}번째를 유지하면</span><h2>예상 입장 호출 <strong>{clock(current.median)}</strong></h2><p className="field-hint">중앙값 · 실제 입장은 도착 후 가능하며, 호출 3분 안에 도착해야 해요.</p>
-    <div className="metric-grid"><div><span>도착할 때 바로 입장 가능</span><strong>{percent(current.onArrival)}</strong><small>도착 3분 전~도착 시각 호출</small></div><div><span>도착까지 호출될 확률</span><strong>{percent(current.callBeforeArrival)}</strong><small>놓친 호출도 포함</small></div><div><span>너무 이른 호출 위험</span><strong className="risk-text">{percent(current.missed)}</strong><small>도착 3분 전보다 이른 호출</small></div></div>
-    <div className="interval-list">{[['50%', current.q25, current.q75], ['80%', current.q10, current.q90], ['90%', current.q05, current.q95]].map(([label, left, right]) => <div key={String(label)}><span>{label} 예측구간</span><b>{clock(left as number | null)} ~ {clock(right as number | null)}</b></div>)}</div>
-  </section><section className="recommend-card"><div className="eyebrow">도착 {clock(result.input.target)} · 도착 후 {result.input.tolerance}분까지 허용</div>
-    <h2>{best ? <>이론상 최적은 <strong>{best.rank}번째</strong>예요</> : '목표 시간대에 맞는 순서를 찾지 못했어요'}</h2>
-    {best && <><p className="recommend-action">{ahead ? `앞으로 당길 수는 없어요. 지금 가능한 범위에서는 ${actionable?.rank === current.rank ? '현재 순서를 유지하세요.' : actionable ? `${actionable.rank}번째가 가장 좋아요.` : '추천이 어려워요.'}` : best.rank === current.rank ? '지금 순서를 유지하세요.' : `${best.rank}번째가 선택 가능하면 뒤로 미루는 편이 좋아요.`}</p>
-      <div className="recommend-comparison"><div><span>현재 순서 성공확률</span><strong>{percent(current.success)}</strong></div><div><span>이론상 최적 성공확률</span><strong>{percent(best.success)}</strong></div></div>
-      {ahead && actionable && <p>앞으로 이동하지 않는 후보의 최적 성공확률은 {percent(actionable.success)}예요.</p>}
-      <p className="recommend-foot">도착 3분 전부터 도착 후 {result.input.tolerance}분까지 호출될 확률이 가장 높은 순서를 골라요. 너무 이른 호출은 실패로 계산해요.</p>
-      <p className="recommend-foot">실제 선택 가능한 마지막 순서는 캐치테이블에서 확인해 주세요. 이 앱은 순서를 변경하지 않아요.</p>
-      {best.success < .3 && <p className="notice">가장 좋은 후보도 성공확률이 낮아요. 추천을 확정적인 지시로 보지 마세요.</p>}
-      {Math.abs(best.success - current.success) < .015 && best.rank !== current.rank && <p className="notice">현재 순서와 차이가 1.5%p 미만이에요. 미세한 차이로 순서를 변경하지 않는 편이 나을 수 있어요.</p>}
-    </>}{result.searchLimited && <p className="notice">도착시간 또는 최적 후보가 계산 범위의 끝에 있어요. 이 추천은 범위 안에서의 비교이며 신뢰하기 어려워요.</p>}
-  </section></>;
+import type { PredictionResult } from '../models/simulation';
+import { RankTimeline } from './rank-timeline';
+export function PredictionSummary({result}:{result:PredictionResult}) {
+  const current=result.positions[0], recommended=result.positions.find(p=>p.rank===result.recommendedRank);
+  const maintain=recommended?.rank===current.rank;
+  const closeAlternative=recommended&&result.positions.find(p=>p.rank!==recommended.rank&&recommended.success-p.success<.01);
+  return <><section className="recommend-card" aria-labelledby="recommend-heading"><div className="recommend-top"><span className="recommend-eyebrow"><Sparkles size={16}/>시간에 맞춘 순서 추천</span><span className="target-badge">{clock(result.input.target-MODEL.graceMinutes)}~{clock(result.input.target+result.input.tolerance)} 호출</span></div>
+    <h2 id="recommend-heading">{!recommended?'목표시간에 맞추기 어려워요':maintain?'지금 순서를 유지하세요':'조금 미루면, 더 잘 맞아요'}</h2>
+    {recommended?<><div className="rank-change"><span className={maintain?'rank-large':'rank-old'}>{current.rank}<small>번째</small></span>{!maintain&&<><ArrowRight className="rank-arrow" size={25}/><span className="rank-large">{recommended.rank}<small>번째</small></span></>}<span className="recommended-tag">{maintain?'유지 추천':`${recommended.rank-current.rank}칸 뒤로`}</span></div><div className="recommend-comparison"><div><span>현재 순서 성공확률</span><strong>{percent(current.success)}</strong></div><ArrowRight size={20}/><div><span>{maintain?'현재 순서 유지 시':'추천 순서 성공확률'}</span><strong>{percent(recommended.success)}</strong></div></div><p className="recommend-foot"><Check size={15}/>{recommended.callMean!==null?`추천 순서 평균 호출 ${clock(recommended.callMean)}`:'시간 범위 내 평균을 계산할 수 없어요'}{recommended.success<.2?' · 목표 구간 확률이 낮아요':''}</p>{<p className="near-tie-note">추천 순서 도착 전 호출 {percent(recommended.callBeforeArrival)} · 유예 초과 {percent(recommended.missed)}</p>}{closeAlternative&&<p className="near-tie-note">{closeAlternative.rank}번째도 확률이 비슷해요. 1%p 미만 차이는 시뮬레이션 오차 범위일 수 있어요.</p>}</>:<p className="no-recommend">현재부터 마지막 순서까지, 목표 구간에 성공한 시뮬레이션이 없어요. 목표시간을 바꿔 확인해 주세요.</p>}
+  </section>
+  <div className="irreversible"><Info size={16}/><span>순서를 미루면 다시 앞으로 당길 수 없어요. 실제 변경은 캐치테이블에서 직접 해 주세요.</span></div>
+  <section className="summary-card card" aria-label="현재 순서 예상 결과"><div className="summary-heading"><h3>현재 {current.rank}번째라면</h3><span>{clock(result.input.now)} 기준</span></div><div className="summary-grid"><div><span className="stat-label">예상 호출 · 평균</span><strong className="stat-value">{clock(current.callMean)}</strong><small>{current.callMean===null?'계산 범위 밖 호출 포함':`약 ${Math.max(0,Math.round(current.callMean-result.input.now))}분 후`}</small></div><div><span className="stat-label">호출 80% 구간</span><strong className="stat-range">{clock(current.callQ10)}<span> ~ </span>{clock(current.callQ90)}</strong><small>10~90% 분위수</small></div><div><span className="stat-label">시간 내 성공확률</span><strong className="stat-value blue-text">{percent(current.success)}</strong><small>{clock(result.input.target-MODEL.graceMinutes)}~{clock(result.input.target+result.input.tolerance)}</small></div></div>
+    {(current.uncalled>0||current.missed>0)&&<p className="censor-note"><TriangleAlert size={14}/>범위 내 입장 실패 {percent(1-current.admitted)} · 호출 예상은 도착시간과 무관하게 계산해요.</p>}
+  </section><RankTimeline rank={result.input.rank} now={result.input.now} milestones={result.rankTimeline}/></>;
 }

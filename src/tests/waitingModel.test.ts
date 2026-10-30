@@ -1,6 +1,6 @@
 import { describe,expect,it } from 'vitest';
-import { MODEL } from '../../scripts/legacy/modelConstants';
-import { effectiveDeferRate,ratesAt,transition,validateQueue } from '../../scripts/legacy/waitingModel';
+import { MODEL } from '../models/modelConstants';
+import { effectiveDeferRate,ratesAt,transition,validateQueue } from '../models/waitingModel';
 describe('queue rules',()=>{
   it('rejects invalid ranks, fractional counts, and excessive queues',()=>{
     for(const [w,r] of [[10,11],[0,1],[10,0],[10,2.5],[151,1],[NaN,1]])expect(validateQueue(w,r)).not.toBeNull();
