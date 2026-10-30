@@ -1,113 +1,91 @@
-import { MODEL, type ModelRates } from './modelConstants';
-import { ratesAt, validateQueue } from './waitingModel';
-import { randomFromSeed, empiricalQuantile } from '../utils/probability';
-export interface SimulationInput { total: number; rank: number; now: number; seed?: number; iterations?: number }
-export interface CallSimulation { input: SimulationInput; iterations: number; calls: Float64Array[]; rankTimes: Float64Array[]; end: number; censorReason: 'horizon' }
-export interface RankMilestone { rank: number; mean: number | null }
+import { MODEL } from './modelConstants.ts';
+import { nextProgress, validateRank, type LocalEvidence } from './waitingModel.ts';
+import { gamma, normal } from './fitting.ts';
+import { randomFromSeed, empiricalQuantile } from '../utils/probability.ts';
+export interface SimulationInput { rank: number; now: number; mode: 'kinka' | 'custom'; evidence?: LocalEvidence; seed?: number; iterations?: number; maxCandidate?: number }
 export interface PredictionInput extends SimulationInput { target: number; tolerance: number }
+export interface CallSimulation { input: SimulationInput; iterations: number; calls: Float64Array[]; rankTimes: Float64Array[]; end: number }
+export interface RankMilestone { rank: number; mean: number | null }
 export interface Bin { time: number; probability: number; cumulative: number }
 export interface PositionResult {
-  callMean: number | null; callQ10: number | null; callQ90: number | null;
-  rank: number; mean: number | null; median: number | null; q10: number | null; q25: number | null; q75: number | null; q90: number | null;
-  bins: Bin[]; success: number; beforeWindow: number; afterWindow: number; beforeTarget: number; callBeforeArrival: number; missed: number; uncalled: number; admitted: number;
+  rank: number; mean: number | null; median: number | null;
+  q05: number | null; q10: number | null; q25: number | null; q75: number | null; q90: number | null; q95: number | null;
+  bins: Bin[]; success: number; onArrival: number; callBeforeArrival: number; missed: number; afterWindow: number; uncalled: number;
+  expectedWait: number | null;
 }
-export interface PredictionResult { input: PredictionInput; positions: PositionResult[]; rankTimeline: RankMilestone[]; recommendedRank: number | null; iterations: number; end: number; censorReason: CallSimulation['censorReason'] }
+export interface PredictionResult { input: PredictionInput; positions: PositionResult[]; rankTimeline: RankMilestone[]; recommendedRank: number | null; feasibleRank: number | null; iterations: number; end: number; searchLimited: boolean }
 export function createSimulation(input: SimulationInput): CallSimulation {
-  const err = validateQueue(input.total, input.rank);
-  if (err) throw new Error(err);
-  if (!Number.isFinite(input.now) || input.now < 0 || input.now >= 1440) throw new Error('현재시각은 오늘의 유효한 시간이어야 해요.');
+  const error = validateRank(input.rank);
+  if (error) throw new Error(error);
+  if (!Number.isFinite(input.now) || input.now < 0 || input.now >= 1440) throw new Error('현재 시각이 올바르지 않아요.');
   const iterations = input.iterations ?? MODEL.iterations;
-  if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100_000) throw new Error('Invalid simulation size');
-  const end = input.now + MODEL.horizonMinutes;
-  return { input: { ...input }, iterations, end, censorReason: 'horizon', rankTimes: Array.from({ length: input.rank - 1 }, () => new Float64Array(iterations).fill(Infinity)), calls: Array.from({ length: input.total - input.rank + 1 }, () => new Float64Array(iterations).fill(Infinity)) };
+  if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100000) throw new Error('Invalid simulation size');
+  const count = input.maxCandidate ?? Math.min(MODEL.maxRank, Math.max(80, input.rank + 20));
+  if (!Number.isInteger(count) || count < input.rank || count > MODEL.maxRank) throw new Error('Invalid candidate range');
+  return { input, iterations, end: Math.min(1440, input.now + MODEL.horizonMinutes),
+    calls: Array.from({ length: count }, () => new Float64Array(iterations).fill(Infinity)),
+    rankTimes: Array.from({ length: input.rank - 1 }, () => new Float64Array(iterations).fill(Infinity)) };
 }
-/**
- * Counterfactual ranks share the same arrival/cancellation/service trajectory.
- * Cancellation and defer marks choose uniformly among OTHER teams in each world.
- * Each marginal is the stated CTMC; no personal team cancels or defers itself.
- */
-export function runScenarios(out: CallSimulation, from: number, to: number, p: ModelRates = MODEL) {
-  const { input, end, calls } = out;
-  const ranks = new Int32Array(calls.length);
-  for (let i = from; i < Math.min(to, out.iterations); i++) {
+export function runScenarios(out: CallSimulation, from: number, to: number) {
+  const { input, iterations, calls, end } = out;
+  for (let i = from; i < Math.min(to, iterations); i++) {
     const random = randomFromSeed(((input.seed ?? MODEL.seed) + Math.imul(i + 1, 0x9e3779b9)) >>> 0);
-    let time = input.now, total = input.total, alive = ranks.length;
-    for (let k = 0; k < ranks.length; k++) ranks[k] = input.rank + k;
-    while (alive > 0 && time < end) {
-      const rates = ratesAt(time, total, p);
-      const sum = rates.service + rates.cancel + rates.defer + rates.arrival;
-      const boundary = end;
-      const dt = sum > 0 ? -Math.log(random()) / sum : Infinity;
-      if (time + dt >= boundary) { time = boundary; continue; }
-      time += dt;
-      const previousRank = ranks[0];
-      const event = random() * sum;
-      if (event < rates.service) {
-        const batch = random() < p.batchOfTwoProbability ? 2 : 1;
-        for (let k = 0; k < ranks.length; k++) if (ranks[k] > 0) {
-          if (ranks[k] <= batch) { calls[k][i] = time; ranks[k] = 0; alive--; }
-          else ranks[k] -= batch;
-        }
-        total = Math.max(0, total - batch);
-      } else if (event < rates.service + rates.cancel) {
-        const otherIndex = Math.floor(random() * (total - 1)) + 1;
-        for (let k = 0; k < ranks.length; k++) if (ranks[k] > otherIndex) ranks[k]--;
-        total--;
-      } else if (event < rates.service + rates.cancel + rates.defer) {
-        const otherIndex = Math.floor(random() * (total - 1)) + 1;
-        const destinationMark = random();
-        for (let k = 0; k < ranks.length; k++) if (ranks[k] > 0) {
-          const j = otherIndex >= ranks[k] ? otherIndex + 1 : otherIndex;
-          if (j < ranks[k]) {
-            const destination = j + 1 + Math.floor(destinationMark * (total - j));
-            if (destination >= ranks[k]) ranks[k]--;
-          }
-        }
-      } else total++;
-      // Observe the unchanged current-rank path; record thresholds skipped by a batch too.
-      for (let rank = previousRank - 1; rank >= Math.max(1, ranks[0]); rank--) {
-        out.rankTimes[input.rank - 1 - rank][i] = time;
-      }
+    let rates = [...MODEL.posteriorDraws[Math.floor(random() * MODEL.posteriorDraws.length)]];
+    let callScale = 1;
+    const evidence = input.evidence;
+    if (input.mode === 'custom' && evidence && evidence.intervals > 0) {
+      const lambda = gamma(evidence.priorMean * MODEL.customMinutes + evidence.count, MODEL.customMinutes + evidence.minutes, random);
+      rates = [lambda, lambda, lambda];
+      callScale = lambda / evidence.priorMean;
+    }
+    // Day-to-day heterogeneity and final-call uncertainty are explicit priors, not measured precision.
+    const day = gamma(MODEL.dayShape, MODEL.dayShape, random);
+    rates = rates.map(r => r * day);
+    const callRate = MODEL.callRate * callScale * day * Math.exp(MODEL.callLogSigma * normal(random) - MODEL.callLogSigma ** 2 / 2);
+    const finalWait = -Math.log(random()) / callRate;
+    let time = input.mode === 'kinka' ? Math.max(input.now, MODEL.openingMinute) : input.now;
+    for (let rank = 1; rank <= calls.length; rank++) {
+      if (rank > 1) time = nextProgress(time, -Math.log(random()), rates, end);
+      const call = time + finalWait;
+      if (call < end) calls[rank - 1][i] = call;
+      // r-1 natural decreases reach rank 1; a distinct service wait then triggers the call.
+      if (rank >= 2 && rank <= input.rank) out.rankTimes[rank - 2][i] = time;
     }
   }
 }
-export function simulate(input: SimulationInput, p: ModelRates = MODEL): CallSimulation {
-  const out = createSimulation(input); runScenarios(out, 0, out.iterations, p); return out;
+export function simulate(input: SimulationInput) {
+  const out = createSimulation(input); runScenarios(out, 0, out.iterations); return out;
 }
 export function summarizeRankTimeline(out: CallSimulation): RankMilestone[] {
-  return out.rankTimes.map((samples, index) => {
-    const sum = samples.reduce((total, time) => total + time, 0);
+  return out.rankTimes.map((values, index) => {
+    const sum = values.reduce((s, t) => s + t, 0);
     return { rank: out.input.rank - 1 - index, mean: Number.isFinite(sum) ? sum / out.iterations : null };
   });
 }
 export function summarize(out: CallSimulation, input: PredictionInput): PositionResult[] {
   if (!Number.isFinite(input.target) || input.target <= input.now || input.target >= 1440) throw new Error('도착시간은 현재보다 늦은 오늘 시간으로 선택해 주세요.');
-  if (![5,10,15].includes(input.tolerance)) throw new Error('도착 후 허용 대기시간은 5, 10, 15분 중 선택해 주세요.');
+  if (![5, 10, 15].includes(input.tolerance)) throw new Error('허용 대기는 5, 10, 15분 중 선택해 주세요.');
   const start = Math.floor(input.now / 5) * 5;
-  return out.calls.map((samples, k) => {
-    const calls = Array.from(samples).filter(Number.isFinite).sort((a,b)=>a-b);
-    const callMean = calls.length === out.iterations ? calls.reduce((sum,t)=>sum+t,0)/out.iterations : null;
-    const callQ10 = empiricalQuantile(calls, out.iterations, .1);
-    const callQ90 = empiricalQuantile(calls, out.iterations, .9);
-    const bins: Bin[] = Array.from({ length: Math.max(1, Math.ceil((out.end - start) / 5)) }, (_, i) => ({ time: start + i * 5, probability: 0, cumulative: 0 }));
-    const admitted: number[] = [];
-    let success=0, beforeWindow=0, afterWindow=0, beforeTarget=0, callBeforeArrival=0, missed=0, uncalled=0;
+  return out.calls.map((samples, index) => {
+    const finite = Array.from(samples).filter(Number.isFinite).sort((a, b) => a - b);
+    const q = (p: number) => empiricalQuantile(finite, out.iterations, p);
+    const bins: Bin[] = Array.from({ length: Math.ceil((out.end - start) / 5) }, (_, i) => ({ time: start + i * 5, probability: 0, cumulative: 0 }));
+    let success = 0, onArrival = 0, callBeforeArrival = 0, missed = 0, afterWindow = 0, uncalled = 0, wait = 0;
     for (const call of samples) {
       if (!Number.isFinite(call)) { uncalled++; continue; }
-      if (call < input.target) callBeforeArrival++;
+      bins[Math.min(bins.length - 1, Math.floor((call - start) / 5))].probability++;
+      if (call <= input.target) callBeforeArrival++;
       if (call < input.target - MODEL.graceMinutes) { missed++; continue; }
-      const entry = Math.max(call, input.target);
-      if (entry >= out.end) { uncalled++; continue; }
-      admitted.push(entry);
-      bins[Math.min(bins.length-1, Math.floor((entry-start)/5))].probability++;
-      if (call <= input.target + input.tolerance) success++;
-      else afterWindow++;
-      if (entry <= input.target) beforeTarget++;
+      if (call <= input.target) onArrival++;
+      if (call <= input.target + input.tolerance) success++; else afterWindow++;
+      wait += Math.max(0, call - input.target);
     }
-    admitted.sort((a,b)=>a-b);
     let cumulative = 0;
-    for (const bin of bins) { bin.probability /= out.iterations; cumulative += bin.probability; bin.cumulative=cumulative; }
-    const q = (p: number) => empiricalQuantile(admitted, out.iterations, p);
-    return { callMean, callQ10, callQ90, rank: input.rank + k, mean: admitted.length ? admitted.reduce((a,b)=>a+b,0)/admitted.length:null, median:q(.5),q10:q(.1),q25:q(.25),q75:q(.75),q90:q(.9),bins,success:success/out.iterations,beforeWindow:beforeWindow/out.iterations,afterWindow:afterWindow/out.iterations,beforeTarget:beforeTarget/out.iterations,callBeforeArrival:callBeforeArrival/out.iterations,missed:missed/out.iterations,uncalled:uncalled/out.iterations,admitted:admitted.length/out.iterations };
+    for (const bin of bins) { bin.probability /= out.iterations; cumulative += bin.probability; bin.cumulative = cumulative; }
+    return { rank: index + 1, mean: finite.length === out.iterations ? finite.reduce((s, t) => s + t, 0) / out.iterations : null,
+      median: q(.5), q05: q(.05), q10: q(.1), q25: q(.25), q75: q(.75), q90: q(.9), q95: q(.95), bins,
+      success: success / out.iterations, onArrival: onArrival / out.iterations, callBeforeArrival: callBeforeArrival / out.iterations,
+      missed: missed / out.iterations, afterWindow: afterWindow / out.iterations, uncalled: uncalled / out.iterations,
+      expectedWait: out.iterations - missed - uncalled > 0 ? wait / (out.iterations - missed - uncalled) : null };
   });
 }

@@ -1,6 +1,6 @@
 import { describe,expect,it } from 'vitest';
-import { simulate,summarize } from '../models/simulation';
-import { choosePosition } from '../models/optimizer';
+import { simulate,summarize } from '../../scripts/legacy/simulation';
+import { choosePosition } from '../../scripts/legacy/optimizer';
 const input={total:10,rank:4,now:786,iterations:10_000,seed:20261029};
 const calls=simulate(input);
 const rows=summarize(calls,{...input,target:810,tolerance:10});

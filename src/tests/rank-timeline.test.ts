@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { MODEL } from '../models/modelConstants';
-import { createSimulation, runScenarios, simulate, summarizeRankTimeline } from '../models/simulation';
+import { MODEL } from '../../scripts/legacy/modelConstants';
+import { createSimulation, runScenarios, simulate, summarizeRankTimeline } from '../../scripts/legacy/simulation';
 
 const config={total:12,rank:9,now:640,iterations:100};
 const isolated={...MODEL,arrivalPerMinute:0,cancellationPerTeamMinute:0,deferPerTeamMinute:0};

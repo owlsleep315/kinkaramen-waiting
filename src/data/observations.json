@@ -1,0 +1,759 @@
+[
+  {
+    "id": "2026-10-29-01",
+    "date": "2026-10-29",
+    "time": 640,
+    "kind": "observation",
+    "total": 14
+  },
+  {
+    "id": "2026-10-29-02",
+    "date": "2026-10-29",
+    "time": 644,
+    "kind": "observation",
+    "total": 19
+  },
+  {
+    "id": "2026-10-29-03",
+    "date": "2026-10-29",
+    "time": 648,
+    "kind": "observation",
+    "total": 22
+  },
+  {
+    "id": "2026-10-29-04",
+    "date": "2026-10-29",
+    "time": 650,
+    "kind": "observation",
+    "total": 23
+  },
+  {
+    "id": "2026-10-29-05",
+    "date": "2026-10-29",
+    "time": 651,
+    "kind": "observation",
+    "total": 24
+  },
+  {
+    "id": "2026-10-29-06",
+    "date": "2026-10-29",
+    "time": 652,
+    "kind": "observation",
+    "total": 25
+  },
+  {
+    "id": "2026-10-29-07",
+    "date": "2026-10-29",
+    "time": 655,
+    "kind": "observation",
+    "total": 25
+  },
+  {
+    "id": "2026-10-29-08",
+    "date": "2026-10-29",
+    "time": 657,
+    "kind": "observation",
+    "total": 28
+  },
+  {
+    "id": "2026-10-29-09",
+    "date": "2026-10-29",
+    "time": 659,
+    "kind": "observation",
+    "total": 26,
+    "note": "2팀 입장",
+    "flags": [
+      "입장 메모가 11:00 영업 시작 규칙과 충돌; 확정 입장으로 사용하지 않음"
+    ]
+  },
+  {
+    "id": "2026-10-29-10",
+    "date": "2026-10-29",
+    "time": 661,
+    "kind": "observation",
+    "total": 25,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-11",
+    "date": "2026-10-29",
+    "time": 662,
+    "kind": "observation",
+    "total": 27,
+    "note": "2팀 추가"
+  },
+  {
+    "id": "2026-10-29-12",
+    "date": "2026-10-29",
+    "time": 664,
+    "kind": "observation",
+    "total": 27
+  },
+  {
+    "id": "2026-10-29-13",
+    "date": "2026-10-29",
+    "time": 666,
+    "kind": "observation",
+    "total": 26,
+    "note": "1팀 추가",
+    "flags": [
+      "Q -1과 추가 1팀 메모 불일치; 미관측 복합 이벤트 가능"
+    ]
+  },
+  {
+    "id": "2026-10-29-14",
+    "date": "2026-10-29",
+    "time": 667,
+    "kind": "observation",
+    "total": 28,
+    "note": "2팀 추가",
+    "flags": [
+      "동일 분 내 기록 순서 불명확"
+    ]
+  },
+  {
+    "id": "2026-10-29-15",
+    "date": "2026-10-29",
+    "time": 667,
+    "kind": "observation",
+    "total": 27,
+    "note": "1팀 입장",
+    "flags": [
+      "동일 분 내 기록 순서 불명확"
+    ]
+  },
+  {
+    "id": "2026-10-29-16",
+    "date": "2026-10-29",
+    "time": 669,
+    "kind": "observation",
+    "total": 28,
+    "note": "1팀 추가"
+  },
+  {
+    "id": "2026-10-29-17",
+    "date": "2026-10-29",
+    "time": 672,
+    "kind": "observation",
+    "total": 29,
+    "note": "2팀 미루기, 1팀 추가"
+  },
+  {
+    "id": "2026-10-29-18",
+    "date": "2026-10-29",
+    "time": 673,
+    "kind": "observation",
+    "total": 31,
+    "note": "2팀 추가"
+  },
+  {
+    "id": "2026-10-29-19",
+    "date": "2026-10-29",
+    "time": 674,
+    "kind": "observation",
+    "total": 30,
+    "note": "1팀 입장",
+    "flags": [
+      "동일 분 내 기록 순서 불명확"
+    ]
+  },
+  {
+    "id": "2026-10-29-20",
+    "date": "2026-10-29",
+    "time": 674,
+    "kind": "observation",
+    "total": 30,
+    "note": "1팀 입장, 1팀 추가",
+    "flags": [
+      "동일 분 내 기록 순서 불명확"
+    ]
+  },
+  {
+    "id": "2026-10-29-21",
+    "date": "2026-10-29",
+    "time": 679,
+    "kind": "observation",
+    "total": 31,
+    "note": "1팀 입장, 2팀 추가"
+  },
+  {
+    "id": "2026-10-29-22",
+    "date": "2026-10-29",
+    "time": 681,
+    "kind": "observation",
+    "total": 33,
+    "note": "2팀 추가"
+  },
+  {
+    "id": "2026-10-29-23",
+    "date": "2026-10-29",
+    "time": 682,
+    "kind": "observation",
+    "total": 35,
+    "note": "2팀 추가"
+  },
+  {
+    "id": "2026-10-29-24",
+    "date": "2026-10-29",
+    "time": 685,
+    "kind": "observation",
+    "total": 36,
+    "note": "1팀 추가",
+    "flags": [
+      "동일 분 내 기록 순서 불명확"
+    ]
+  },
+  {
+    "id": "2026-10-29-25",
+    "date": "2026-10-29",
+    "time": 685,
+    "kind": "observation",
+    "total": 35,
+    "note": "1팀 입장",
+    "flags": [
+      "동일 분 내 기록 순서 불명확"
+    ]
+  },
+  {
+    "id": "2026-10-29-26",
+    "date": "2026-10-29",
+    "time": 689,
+    "kind": "observation",
+    "total": 32,
+    "note": "3팀 입장"
+  },
+  {
+    "id": "2026-10-29-27",
+    "date": "2026-10-29",
+    "time": 693,
+    "kind": "observation",
+    "total": 30,
+    "note": "2팀 입장"
+  },
+  {
+    "id": "2026-10-29-28",
+    "date": "2026-10-29",
+    "time": 698,
+    "kind": "observation",
+    "total": 32,
+    "note": "2팀 추가"
+  },
+  {
+    "id": "2026-10-29-29",
+    "date": "2026-10-29",
+    "time": 700,
+    "kind": "observation",
+    "total": 30,
+    "note": "2팀 입장"
+  },
+  {
+    "id": "2026-10-29-30",
+    "date": "2026-10-29",
+    "time": 704,
+    "kind": "observation",
+    "total": 27,
+    "rank": 25,
+    "note": "3팀 입장, 2팀 미루기"
+  },
+  {
+    "id": "2026-10-29-31",
+    "date": "2026-10-29",
+    "time": 707,
+    "kind": "observation",
+    "total": 28,
+    "note": "1팀 추가"
+  },
+  {
+    "id": "2026-10-29-32",
+    "date": "2026-10-29",
+    "time": 709,
+    "kind": "observation",
+    "total": 29,
+    "rank": 24,
+    "note": "1팀 입장, 2팀 추가"
+  },
+  {
+    "id": "2026-10-29-33",
+    "date": "2026-10-29",
+    "time": 711,
+    "kind": "observation",
+    "total": 31,
+    "note": "2팀 추가"
+  },
+  {
+    "id": "2026-10-29-34",
+    "date": "2026-10-29",
+    "time": 712,
+    "kind": "observation",
+    "total": 32,
+    "rank": 24,
+    "note": "1팀 추가, 웨이팅 등록 마감"
+  },
+  {
+    "id": "2026-10-29-35",
+    "date": "2026-10-29",
+    "time": 714,
+    "kind": "observation",
+    "total": 31,
+    "rank": 23,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-36",
+    "date": "2026-10-29",
+    "time": 718,
+    "kind": "observation",
+    "total": 30,
+    "rank": 22,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-37",
+    "date": "2026-10-29",
+    "time": 721,
+    "kind": "observation",
+    "total": 29,
+    "rank": 21,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-38",
+    "date": "2026-10-29",
+    "time": 723,
+    "kind": "observation",
+    "total": 28,
+    "rank": 20,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-39",
+    "date": "2026-10-29",
+    "time": 726,
+    "kind": "observation",
+    "total": 25,
+    "rank": 18,
+    "note": "2팀 입장, 1팀 취소"
+  },
+  {
+    "id": "2026-10-29-40",
+    "date": "2026-10-29",
+    "time": 739,
+    "kind": "observation",
+    "total": 23,
+    "rank": 16,
+    "note": "2팀 입장"
+  },
+  {
+    "id": "2026-10-29-41",
+    "date": "2026-10-29",
+    "time": 742,
+    "kind": "observation",
+    "total": 22,
+    "rank": 15,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-42",
+    "date": "2026-10-29",
+    "time": 747,
+    "kind": "observation",
+    "total": 21,
+    "rank": 14,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-43",
+    "date": "2026-10-29",
+    "time": 752,
+    "kind": "observation",
+    "total": 19,
+    "rank": 12,
+    "note": "2팀 입장"
+  },
+  {
+    "id": "2026-10-29-44",
+    "date": "2026-10-29",
+    "time": 759,
+    "kind": "observation",
+    "total": 17,
+    "rank": 10,
+    "note": "2팀 입장"
+  },
+  {
+    "id": "2026-10-29-45",
+    "date": "2026-10-29",
+    "time": 768,
+    "kind": "observation",
+    "total": 15,
+    "rank": 9,
+    "note": "1팀 입장, 1팀 취소"
+  },
+  {
+    "id": "2026-10-29-46",
+    "date": "2026-10-29",
+    "time": 769,
+    "kind": "observation",
+    "total": 14,
+    "rank": 8,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-47",
+    "date": "2026-10-29",
+    "time": 780,
+    "kind": "observation",
+    "total": 13,
+    "rank": 7,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-48",
+    "date": "2026-10-29",
+    "time": 782,
+    "kind": "observation",
+    "total": 12,
+    "rank": 6,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-49",
+    "date": "2026-10-29",
+    "time": 785,
+    "kind": "observation",
+    "total": 11,
+    "rank": 5,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-50",
+    "date": "2026-10-29",
+    "time": 786,
+    "kind": "observation",
+    "total": 10,
+    "rank": 4,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-51",
+    "date": "2026-10-29",
+    "time": 788,
+    "kind": "self-defer",
+    "total": 10,
+    "rank": 6,
+    "note": "13:06 이후 4→6 직접 미룸; 13:08에 상태 확인",
+    "flags": [
+      "직접 미루기가 발생한 직전 관측 구간을 학습에서 제외"
+    ]
+  },
+  {
+    "id": "2026-10-29-52",
+    "date": "2026-10-29",
+    "time": 791,
+    "kind": "observation",
+    "total": 9,
+    "rank": 5,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-53",
+    "date": "2026-10-29",
+    "time": 794,
+    "kind": "observation",
+    "total": 8,
+    "rank": 4,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-29-54",
+    "date": "2026-10-29",
+    "time": 798,
+    "kind": "observation",
+    "total": 7,
+    "rank": 3,
+    "note": "1팀 입장"
+  },
+  {
+    "id": "2026-10-30-01",
+    "date": "2026-10-30",
+    "time": 644,
+    "kind": "observation",
+    "total": 17
+  },
+  {
+    "id": "2026-10-30-02",
+    "date": "2026-10-30",
+    "time": 645,
+    "kind": "observation",
+    "total": 23
+  },
+  {
+    "id": "2026-10-30-03",
+    "date": "2026-10-30",
+    "time": 652,
+    "kind": "observation",
+    "total": 29
+  },
+  {
+    "id": "2026-10-30-04",
+    "date": "2026-10-30",
+    "time": 657,
+    "kind": "observation",
+    "total": 31
+  },
+  {
+    "id": "2026-10-30-05",
+    "date": "2026-10-30",
+    "time": 666,
+    "kind": "observation",
+    "total": 33,
+    "rank": 33
+  },
+  {
+    "id": "2026-10-30-06",
+    "date": "2026-10-30",
+    "time": 682,
+    "kind": "observation",
+    "total": 33,
+    "rank": 22,
+    "note": "직접 미루기 직전 순서",
+    "ordered": true,
+    "flags": [
+      "명시적 미루기 전후로 분리; 분 안의 정확한 시각은 미상"
+    ]
+  },
+  {
+    "id": "2026-10-30-07",
+    "date": "2026-10-30",
+    "time": 682,
+    "kind": "self-defer",
+    "total": 33,
+    "rank": 33,
+    "note": "22→33 직접 미룸",
+    "ordered": true,
+    "flags": [
+      "명시적 미루기 전후로 분리; 분 안의 정확한 시각은 미상"
+    ]
+  },
+  {
+    "id": "2026-10-30-08",
+    "date": "2026-10-30",
+    "time": 688,
+    "kind": "observation",
+    "total": 34,
+    "rank": 32
+  },
+  {
+    "id": "2026-10-30-09",
+    "date": "2026-10-30",
+    "time": 690,
+    "kind": "observation",
+    "total": 35,
+    "rank": 32
+  },
+  {
+    "id": "2026-10-30-10",
+    "date": "2026-10-30",
+    "time": 694,
+    "kind": "observation",
+    "total": 32,
+    "rank": 30,
+    "note": "2팀 입장"
+  },
+  {
+    "id": "2026-10-30-11",
+    "date": "2026-10-30",
+    "time": 697,
+    "kind": "observation",
+    "total": 33,
+    "rank": 30
+  },
+  {
+    "id": "2026-10-30-12",
+    "date": "2026-10-30",
+    "time": 699,
+    "kind": "observation",
+    "total": 35,
+    "rank": 29
+  },
+  {
+    "id": "2026-10-30-13",
+    "date": "2026-10-30",
+    "time": 702,
+    "kind": "observation",
+    "total": 32,
+    "rank": 26,
+    "note": "3팀 입장"
+  },
+  {
+    "id": "2026-10-30-14",
+    "date": "2026-10-30",
+    "time": 714,
+    "kind": "registration",
+    "note": "웨이팅 등록 마감"
+  },
+  {
+    "id": "2026-10-30-15",
+    "date": "2026-10-30",
+    "time": 714,
+    "kind": "observation",
+    "total": 35,
+    "rank": 25
+  },
+  {
+    "id": "2026-10-30-16",
+    "date": "2026-10-30",
+    "time": 719,
+    "kind": "observation",
+    "total": 32,
+    "rank": 23,
+    "note": "1팀 취소"
+  },
+  {
+    "id": "2026-10-30-17",
+    "date": "2026-10-30",
+    "time": 730,
+    "kind": "observation",
+    "total": 27,
+    "rank": 18
+  },
+  {
+    "id": "2026-10-30-18",
+    "date": "2026-10-30",
+    "time": 737,
+    "kind": "observation",
+    "total": 25,
+    "rank": 16
+  },
+  {
+    "id": "2026-10-30-19",
+    "date": "2026-10-30",
+    "time": 743,
+    "kind": "observation",
+    "total": 24,
+    "rank": 15
+  },
+  {
+    "id": "2026-10-30-20",
+    "date": "2026-10-30",
+    "time": 749,
+    "kind": "observation",
+    "total": 22,
+    "rank": 13
+  },
+  {
+    "id": "2026-10-30-21",
+    "date": "2026-10-30",
+    "time": 753,
+    "kind": "observation",
+    "total": 20,
+    "rank": 11
+  },
+  {
+    "id": "2026-10-30-22",
+    "date": "2026-10-30",
+    "time": 757,
+    "kind": "observation",
+    "total": 19,
+    "rank": 10
+  },
+  {
+    "id": "2026-10-30-23",
+    "date": "2026-10-30",
+    "time": 760,
+    "kind": "observation",
+    "total": 17,
+    "rank": 9
+  },
+  {
+    "id": "2026-10-30-24",
+    "date": "2026-10-30",
+    "time": 762,
+    "kind": "observation",
+    "total": 16,
+    "rank": 9
+  },
+  {
+    "id": "2026-10-30-25",
+    "date": "2026-10-30",
+    "time": 763,
+    "kind": "observation",
+    "total": 15,
+    "rank": 8
+  },
+  {
+    "id": "2026-10-30-26",
+    "date": "2026-10-30",
+    "time": 764,
+    "kind": "observation",
+    "total": 14,
+    "rank": 7
+  },
+  {
+    "id": "2026-10-30-27",
+    "date": "2026-10-30",
+    "time": 765,
+    "kind": "observation",
+    "total": 13,
+    "rank": 6,
+    "note": "웨이팅 추가 오픈"
+  },
+  {
+    "id": "2026-10-30-28",
+    "date": "2026-10-30",
+    "time": 766,
+    "kind": "self-defer",
+    "total": 13,
+    "rank": 13,
+    "note": "12:45 이후 6→13 직접 미룸; 12:46에 상태 확인",
+    "flags": [
+      "직접 미루기가 발생한 직전 관측 구간을 학습에서 제외"
+    ]
+  },
+  {
+    "id": "2026-10-30-29",
+    "date": "2026-10-30",
+    "time": 773,
+    "kind": "observation",
+    "total": 17,
+    "rank": 13
+  },
+  {
+    "id": "2026-10-30-30",
+    "date": "2026-10-30",
+    "time": 775,
+    "kind": "observation",
+    "total": 14,
+    "rank": 10
+  },
+  {
+    "id": "2026-10-30-31",
+    "date": "2026-10-30",
+    "time": 778,
+    "kind": "observation",
+    "total": 15,
+    "rank": 9
+  },
+  {
+    "id": "2026-10-30-32",
+    "date": "2026-10-30",
+    "time": 786,
+    "kind": "observation",
+    "total": 14,
+    "rank": 8
+  },
+  {
+    "id": "2026-10-30-33",
+    "date": "2026-10-30",
+    "time": 793,
+    "kind": "observation",
+    "total": 13,
+    "rank": 5
+  },
+  {
+    "id": "2026-10-30-34",
+    "date": "2026-10-30",
+    "time": 798,
+    "kind": "registration",
+    "rank": 3
+  }
+]

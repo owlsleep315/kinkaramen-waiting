@@ -1,15 +1,8 @@
-/** Fixed at development time. Never derive or mutate these values from user inputs. */
+import fitted from '../data/fittedModel.json' with { type: 'json' };
 export const MODEL = Object.freeze({
-  servicePerMinute: 23 / 86,
-  cancellationPerTeamMinute: 2 / 1518,
-  deferPerTeamMinute: 0.0005,
-  arrivalPerMinute: 34 / 71,
-  batchOfTwoProbability: 0.15,
-  graceMinutes: 3,
-  horizonMinutes: 360,
-  iterations: 10_000,
-  seed: 20261029,
-  maxWaiting: 150,
+  graceMinutes: 3, horizonMinutes: 720, iterations: 6000, seed: 20261030,
+  maxRank: 300, openingMinute: 660, registrationMinute: 630, registrationCap: 50,
+  rates: fitted.rates, posteriorDraws: fitted.posteriorDraws,
+  ...fitted.prior,
 });
-export type ModelParameters = typeof MODEL;
-export type ModelRates = { [K in 'servicePerMinute' | 'cancellationPerTeamMinute' | 'deferPerTeamMinute' | 'arrivalPerMinute' | 'batchOfTwoProbability']: number };
+export const FIT = fitted;
