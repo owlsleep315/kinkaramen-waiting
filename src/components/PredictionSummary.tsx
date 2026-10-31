@@ -8,7 +8,6 @@ export function PredictionSummary({ result }: { result: PredictionResult }) {
   const current = result.positions.find(p => p.rank === result.input.rank)!;
   const recommended = result.positions.find(p => p.rank === result.recommendedRank);
   const maintain = recommended?.rank === current.rank, ahead = recommended && recommended.rank < current.rank;
-  const closeAlternative = recommended && result.positions.find(p => p.rank !== recommended.rank && recommended.success - p.success < .01);
   return <><section className="recommend-card" aria-labelledby="recommend-heading">
     <div className="recommend-top"><span className="recommend-eyebrow"><Sparkles size={16}/>시간에 맞춘 순서 추천</span><span className="target-badge">{clock(result.input.target - MODEL.graceMinutes)}~{clock(result.input.target + result.input.tolerance)} 호출</span></div>
     <h2 id="recommend-heading">{!recommended ? '목표시간에 맞추기 어려워요' : maintain ? '지금 순서를 유지하세요' : ahead ? `최적은 ${recommended.rank}번째예요` : `${recommended.rank}번째로 미루는 게 좋아요`}</h2>
