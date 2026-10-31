@@ -15,13 +15,16 @@ import { percent } from './utils/probability';
 import { appendPredictionRecord, defaultState, formError, loadState, saveState, type FormValues } from './state/storage';
 import type { PredictionInput } from './models/simulation';
 import { MODEL } from './models/modelConstants';
+import { localModel } from './models/waitingModel';
 const demoDefaults: FormValues = { rank: '4', target: '13:30', tolerance: 10 };
 function restore() { try { return loadState(window.localStorage); } catch { return { state: defaultState(), writable: false, warning: '브라우저 저장소를 사용할 수 없어 이번 화면에서만 유지돼요.' }; } }
 export default function App() {
   const [initial] = useState(restore), [saved, setSaved] = useState(initial.state), [writable, setWritable] = useState(initial.writable), [warning, setWarning] = useState(initial.warning);
   const [clockTick, setClockTick] = useState(() => new Date()), [demo, setDemo] = useState(false), [demoValues, setDemoValues] = useState(demoDefaults);
   const [selectedRank, setSelectedRank] = useState(4), [chart, setChart] = useState<'distribution' | 'cumulative'>('distribution');
-  const { result, loading, progress, error, predict, clear } = useWaitingPrediction();
+  const { result, loading, progress, error, predict, clear: clearPrediction } = useWaitingPrediction();
+  const [collectionNotice, setCollectionNotice] = useState('');
+  function clear() { clearPrediction(); setCollectionNotice(''); }
   const reduceMotion = useReducedMotion(), chartRef = useRef<HTMLElement>(null);
   const tab = saved.tab, values = demo ? demoValues : saved[tab];
   const now = demo ? 786 : seoulMinutes(clockTick), date = demo ? '2026-10-29' : seoulDate(clockTick);
@@ -51,6 +54,13 @@ export default function App() {
     const records = tab === 'other' ? appendPredictionRecord(saved.records, submittedDate, submittedNow, Number(values.rank), crypto.randomUUID()) : undefined;
     const input: PredictionInput = { rank: Number(values.rank), target: parseTime(values.target), tolerance: values.tolerance, now: submittedNow, mode: tab, date: submittedDate, observations: records };
     setClockTick(submittedAt);
+    setCollectionNotice('');
+    if (records && localModel(records, submittedDate, submittedNow).needsObservation) {
+      clear();
+      setSaved(s => ({ ...s, records }));
+      setCollectionNotice('순서 기록을 저장했어요. 오늘 기록은 2개 이상이지만 같은 분의 기록이나 미루기 구간만 있어 호출 속도를 계산할 수 없어요. 다음 분 이후 현재 순서로 다시 예측해 주세요. 킨카라멘 호출 속도로 보정하지 않아요.');
+      return;
+    }
     predict(input, () => { if (records) setSaved(s => ({ ...s, records })); });
   }
   function example() { clear(); setSaved(s => ({ ...s, tab: 'kinka' })); setDemoValues(demoDefaults); setDemo(true); }
@@ -71,11 +81,12 @@ export default function App() {
         <div className="result-column" aria-busy={loading}>
           <div role="status" className="sr-only">{loading ? `계산 중 ${Math.round(progress * 100)}%` : active ? '예측 계산이 완료되었어요.' : ''}</div>
           {error && <div className="error-banner" role="alert">{error}</div>}
+          {collectionNotice && <div className="stale-banner" role="status">{collectionNotice}</div>}
           {loading && <div className="loading-banner"><span className="pulse-dot"/>가능한 입장 상황을 계산하고 있어요.<span>{Math.round(progress * 100)}%</span><div style={{ width: `${progress * 100}%` }}/></div>}
           {active && current && selected ? <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} className="results">
             {dirty && <div className="stale-banner" role="status">입력값이 바뀌었어요. 아래는 이전 입력의 결과예요. 예측하기를 눌러 다시 계산해 주세요.</div>}
             {!demo && (date !== active.input.date || now - active.input.now >= 1) && <div className="stale-banner">{active.input.date} {clock(active.input.now)} 기준 결과예요. 현재 순서를 확인하고 예측하기를 눌러 주세요.</div>}
-            {tab === 'other' && <div className="local-model-note">{active.modelInfo.intervals ? `오늘 ${active.modelInfo.minutes}분 동안 ${active.modelInfo.count}칸 감소한 기록을 반영했어요.` : '기록이 부족해 킨카라멘 기준으로 예측하고 있어요.'}{active.modelInfo.excluded > 0 && <span> 직접 미루기·모호한 구간 {active.modelInfo.excluded}개 제외</span>}{active.modelInfo.otherDates > 0 && <span> · 지난 날짜 기록 제외</span>}{active.modelInfo.future > 0 && <span> · 미래 시각 기록 제외</span>}</div>}
+            {tab === 'other' && <div className="local-model-note">{active.modelInfo.intervals ? `오늘 ${active.modelInfo.minutes}분 동안 ${active.modelInfo.count}칸 감소한 이 매장 기록만으로 호출 속도를 추정했어요. 킨카라멘 호출 속도 반영은 0%예요.` : '오늘 기록이 1개 이하라 킨카라멘 기준으로 임시 예측해요.'}{active.modelInfo.excluded > 0 && <span> 직접 미루기·모호한 구간 {active.modelInfo.excluded}개 제외</span>}{active.modelInfo.otherDates > 0 && <span> · 지난 날짜 기록 제외</span>}{active.modelInfo.future > 0 && <span> · 미래 시각 기록 제외</span>}</div>}
             <PredictionSummary result={active}/>
             <PredictionCoefficients result={active} rank={selected.rank}/>
             <section className="card chart-card" ref={chartRef}>

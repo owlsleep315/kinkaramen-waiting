@@ -22,8 +22,10 @@ describe('browser records', () => {
     const deferred = appendPredictionRecord([row], row.date, 740, 24, 'b');
     expect(deferred[1].kind).toBe('self-defer');
     expect(localModel(deferred, row.date, 750).intervals).toBe(0);
+    expect(localModel(deferred, row.date, 750).posterior).toBeNull();
     const rows = appendPredictionRecord(deferred, row.date, 750, 21, 'c');
     expect(localModel(rows, row.date, 750)).toMatchObject({ intervals: 1, count: 3, minutes: 10, excluded: 1 });
+    expect(localModel(rows, row.date, 750).needsObservation).toBe(false);
   });
   it('deduplicates consecutive identical observations, preserves ordered same-minute changes', () => {
     const first = appendPredictionRecord([], row.date, 730, 4, 'a');

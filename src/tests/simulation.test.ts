@@ -5,6 +5,23 @@ import { BEHAVIOR } from '../models/intervalModel';
 const input = { rank: 4, now: 786, iterations: 2000 };
 const out = simulate(input), rows = summarize(out, { ...input, target: 810, tolerance: 10 });
 describe('rank-only forecast', () => {
+  it('rejects insufficient local intervals instead of silently using Kinka', () => {
+    expect(() => createSimulation({ ...input, mode: 'other', date: '2026-10-31', observations: [
+      { id: 'a', date: '2026-10-31', time: 780, rank: 20, kind: 'observation', ordered: true },
+      { id: 'b', date: '2026-10-31', time: 780, rank: 19, kind: 'observation', ordered: true },
+    ] })).toThrow('유효 구간');
+  });
+  it('zero local service preserves fixed behavior and never invents a call', () => {
+    const input = { rank: 2, now: 740, mode: 'other' as const, date: '2026-10-31', iterations: 20, observations: [
+      { id: 'a', date: '2026-10-31', time: 720, rank: 2, kind: 'observation' as const },
+      { id: 'b', date: '2026-10-31', time: 740, rank: 2, kind: 'observation' as const },
+    ] };
+    const local = simulate(input);
+    expect(local.modelInfo).toMatchObject({ service: 0, cancellation: BEHAVIOR.cancellation, defer: BEHAVIOR.defer, crossing: BEHAVIOR.crossing });
+    expect(local.modelInfo.stepMinutes[0]).toBe(Infinity);
+    expect(Number.isFinite(local.modelInfo.stepMinutes[1])).toBe(true);
+    expect(summarize(local, { ...input, target: 770, tolerance: 10 })[1]).toMatchObject({ uncalled: 1, callMean: null, success: 0 });
+  });
   it('reports the exact posterior mixture waiting time and fixed behavior coefficients', () => {
     const info = out.modelInfo;
     expect(info).toMatchObject({ cancellation: BEHAVIOR.cancellation, defer: BEHAVIOR.defer, crossing: BEHAVIOR.crossing });

@@ -44,6 +44,27 @@ export function sampleRate(posterior: Posterior, u: number) {
   return posterior.rates.at(-1)!;
 }
 
+/** Local-only maximum likelihood; no Kinka rate, pseudo-count, or prior exposure. */
+export function fitLocalService(intervals: Interval[]): Posterior {
+  if (!intervals.length || intervals.some(v => !Number.isFinite(v.start) || !Number.isFinite(v.end) || v.end <= v.start || !Number.isInteger(v.startRank) || !Number.isInteger(v.count) || v.count < 0 || v.count >= v.startRank)) {
+    throw new Error('호출 속도를 추정할 유효한 관측 구간이 필요해요.');
+  }
+  const exposure = intervals.reduce((sum, v) => sum + v.end - v.start, 0);
+  const offsets = intervals.flatMap(v => Array.from({ length: v.count }, (_, j) => behaviorRate * (v.startRank - 1 - j)));
+  const score = (rate: number) => offsets.reduce((sum, offset) => sum + 1 / (rate + offset), -exposure);
+  let rate = 0;
+  if (score(0) > 0) {
+    let low = 0, high = offsets.length / exposure;
+    for (let i = 0; i < 80; i++) {
+      const middle = (low + high) / 2;
+      if (score(middle) > 0) low = middle; else high = middle;
+    }
+    rate = (low + high) / 2;
+  }
+  // A point estimate plugs into the existing simulation; event times remain random.
+  return { rates: [rate], weights: [1], mean: rate, low: rate, high: rate };
+}
+
 /** Counts capped at rank-1; actual calling is a separate absorbing state. */
 export function decreaseDistribution(rank: number, minutes: number, posterior: Posterior) {
   const mass = Array.from({ length: rank }, () => 0);

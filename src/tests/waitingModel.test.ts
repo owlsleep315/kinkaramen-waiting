@@ -1,23 +1,48 @@
 import { describe, expect, it } from 'vitest';
 import { validateRank, localModel, rankRate } from '../models/waitingModel';
 import { MODEL, KINKA_POSTERIOR } from '../models/modelConstants';
-import { behaviorRate, decreaseDistribution, fitService, logTransition } from '../models/intervalModel';
+import { behaviorRate, decreaseDistribution, fitLocalService, fitService, logTransition } from '../models/intervalModel';
 import type { Observation } from '../models/observations';
 const rows: Observation[] = [{ id: '1', date: '2026-10-30', time: 720, rank: 20, kind: 'observation' }, { id: '2', date: '2026-10-30', time: 730, rank: 16, kind: 'observation' }];
 describe('rank-only model and local updates', () => {
   it('validates ranks without a total', () => { for (const r of [0, -1, 151, 2.5, NaN]) expect(validateRank(r)).not.toBeNull(); expect(validateRank(1)).toBeNull(); expect(validateRank(150)).toBeNull(); });
   it('more teams ahead add cancellation and effective defer, not final call hazards', () => { expect(rankRate(1)).toBe(MODEL.servicePerMinute); expect(rankRate(30) - rankRate(1)).toBeCloseTo(29 * behaviorRate); });
   it.each([{ records: [] }, { records: [rows[0]] }])('uses the Kinka posterior with fewer than two records', ({ records }) => { expect(localModel(records, '2026-10-30', 740).posterior).toBe(KINKA_POSTERIOR); });
-  it('shrinks new speed toward Kinka and never adds observed decreases twice', () => {
+  it('uses local-only likelihood from the second record, without double counting behavior', () => {
     const info = localModel(rows, '2026-10-30', 740);
     expect(info.minutes).toBe(10); expect(info.count).toBe(4);
-    expect(info.posterior.mean).toBeGreaterThan(MODEL.servicePerMinute);
-    expect(info.posterior.mean).toBeLessThan(.4);
+    expect(info.posterior!.mean).toBeGreaterThan(MODEL.servicePerMinute);
+    expect(info.posterior!.mean).toBeLessThan(.4);
+    const rate = info.posterior!.mean;
+    const score = [19, 18, 17, 16].reduce((sum, ahead) => sum + 1 / (rate + ahead * behaviorRate), -10);
+    expect(score).toBeCloseTo(0, 10);
+    expect(info.posterior!.rates).toEqual([rate]);
+    expect(info.posterior!.weights).toEqual([1]);
+  });
+  it('one observed decrease has the analytic local-only estimate', () => {
+    const info = localModel([rows[0], { ...rows[1], rank: 19 }], '2026-10-30', 740);
+    expect(info.posterior!.mean).toBeCloseTo(1 / 10 - 19 * behaviorRate, 12);
+  });
+  it('local estimate maximizes the independent interval likelihood', () => {
+    const intervals = [{ date: rows[0].date, start: 720, end: 730, startRank: 20, count: 4 }, { date: rows[0].date, start: 730, end: 735, startRank: 16, count: 1 }];
+    const rate = fitLocalService(intervals).mean;
+    const likelihood = (mu: number) => intervals.reduce((sum, v) => sum + logTransition(v.startRank, v.startRank - v.count, v.end - v.start, mu), 0);
+    for (const candidate of [0, rate / 2, rate * 2, MODEL.servicePerMinute]) expect(likelihood(rate)).toBeGreaterThan(likelihood(candidate));
+  });
+  it('does not fall back to Kinka for same-minute or deferral-only records', () => {
+    for (const second of [{ ...rows[1], time: 720 }, { ...rows[1], rank: 30, kind: 'self-defer' as const }]) {
+      expect(localModel([rows[0], second], '2026-10-30', 740)).toMatchObject({ posterior: null, needsObservation: true });
+    }
+    expect(() => fitLocalService([])).toThrow();
+  });
+  it('uses zero for zero-decrease intervals or decreases explained by fixed behavior', () => {
+    expect(localModel([rows[0], { ...rows[1], rank: 20 }], '2026-10-30', 740).posterior!.mean).toBe(0);
+    expect(fitLocalService([{ date: rows[0].date, start: 720, end: 820, startRank: 20, count: 1 }]).mean).toBe(0);
   });
   it('longer zero-decrease observations slow the estimate', () => {
-    const fast = localModel(rows, '2026-10-30', 780).posterior.mean;
+    const fast = localModel(rows, '2026-10-30', 780).posterior!.mean;
     const slow = localModel([...rows, { ...rows[1], id: '3', time: 780 }], '2026-10-30', 780);
-    expect(slow.posterior.mean).toBeLessThan(fast / 2);
+    expect(slow.posterior!.mean).toBeLessThan(fast / 2);
   });
   it('self-defer affects state but contributes no speed information', () => {
     const info = localModel([...rows, { ...rows[1], id: '3', time: 735, rank: 30, kind: 'self-defer' }], '2026-10-30', 740);

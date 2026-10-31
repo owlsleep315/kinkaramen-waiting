@@ -35,6 +35,7 @@ export function createSimulation(input: SimulationInput): CallSimulation {
   const iterations = input.iterations ?? MODEL.iterations;
   if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100_000) throw new Error('Invalid simulation size');
   const local = input.mode === 'other' ? localModel(input.observations ?? [], input.date ?? '', input.now) : null;
+  if (local?.needsObservation) throw new Error('기록은 2개 이상이지만 시간 차이가 있는 유효 구간이 없어요. 다음 분 이후 현재 순서로 다시 예측해 주세요.');
   const posterior = local?.posterior ?? KINKA_POSTERIOR;
   const modelInfo: ModelInfo = {
     service: posterior.mean, minutes: local?.minutes ?? 0, count: local?.count ?? 0, intervals: local?.intervals ?? 0,
