@@ -1,9 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { createSimulation, simulate, summarize } from '../models/simulation';
 import { KINKA_POSTERIOR } from '../models/modelConstants';
+import { BEHAVIOR } from '../models/intervalModel';
 const input = { rank: 4, now: 786, iterations: 2000 };
 const out = simulate(input), rows = summarize(out, { ...input, target: 810, tolerance: 10 });
 describe('rank-only forecast', () => {
+  it('reports the exact posterior mixture waiting time and fixed behavior coefficients', () => {
+    const info = out.modelInfo;
+    expect(info).toMatchObject({ cancellation: BEHAVIOR.cancellation, defer: BEHAVIOR.defer, crossing: BEHAVIOR.crossing });
+    expect(info.service).toBe(KINKA_POSTERIOR.mean);
+    for (const rank of [1, 4, 150]) {
+      const expected = KINKA_POSTERIOR.rates.reduce((sum, rate, i) => sum + KINKA_POSTERIOR.weights[i] / (rate + (rank - 1) * (BEHAVIOR.cancellation + BEHAVIOR.defer * BEHAVIOR.crossing)), 0);
+      expect(info.stepMinutes[rank - 1]).toBeCloseTo(expected, 12);
+    }
+    expect(info.stepMinutes[0]).toBeGreaterThan(info.stepMinutes[3]);
+    expect(info.stepMinutes[0]).toBeGreaterThan(1 / info.service);
+  });
+  it('reports locally adapted coefficients instead of Kinka defaults', () => {
+    const local = createSimulation({ ...input, mode: 'other', date: '2026-10-31', observations: [
+      { id: 'a', date: '2026-10-31', time: 720, rank: 20, kind: 'observation' },
+      { id: 'b', date: '2026-10-31', time: 780, rank: 19, kind: 'observation' },
+    ] });
+    expect(local.modelInfo.service).toBe(local.posterior.mean);
+    expect(local.modelInfo.service).toBeLessThan(out.modelInfo.service);
+    expect(local.modelInfo.stepMinutes[3]).toBeGreaterThan(out.modelInfo.stepMinutes[3]);
+  });
   it('is reproducible without total or target in the call process', () => {
     const early = summarize(out, { ...input, target: 800, tolerance: 5 });
     expect(early[3].callMean).toBe(rows[3].callMean); expect(early[3].bins).toEqual(rows[3].bins);

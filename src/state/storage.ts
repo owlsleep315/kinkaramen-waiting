@@ -26,9 +26,13 @@ export function loadState(storage: Pick<Storage, 'getItem'>) {
 export function saveState(storage: Pick<Storage, 'setItem'>, state: SavedState) {
   try { storage.setItem(STORAGE_KEY, JSON.stringify(state)); return true; } catch { return false; }
 }
-export function updateRecord(rows: Observation[], row: Observation) {
+export function appendPredictionRecord(rows: Observation[], date: string, time: number, rank: number, id: string): Observation[] {
+  const previous = latestRecord(rows, date, time);
+  const row: Observation = { id, date, time, rank, kind: previous && rank > previous.rank! ? 'self-defer' : 'observation', ordered: true };
   if (!isRecord(row)) throw new Error('관측 시각과 순서를 확인해 주세요.');
-  return [...rows.filter(r => r.id !== row.id), row].sort((a, b) => a.date.localeCompare(b.date) || a.time - b.time);
+  if (previous?.time === time && previous.rank === rank) return rows;
+  if (rows.some(r => r.id === id)) throw new Error('이미 저장된 기록이에요.');
+  return [...rows, row].sort((a, b) => a.date.localeCompare(b.date) || a.time - b.time);
 }
 export const removeRecord = (rows: Observation[], id: string) => rows.filter(r => r.id !== id);
 export const latestRecord = (rows: Observation[], date: string, now: number) => rows.filter(r => r.date === date && r.time <= now).sort((a, b) => a.time - b.time).at(-1);

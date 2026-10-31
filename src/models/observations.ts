@@ -16,7 +16,7 @@ export interface Exclusion { id: string; reason: string }
 /** Counts are interval-censored. Never impute event timestamps or infer event types from Q. */
 export function buildIntervals(rows: Observation[]) {
   const intervals: Interval[] = [], excluded: Exclusion[] = [];
-  const unique = rows.filter((r, i) => rows.findIndex(x => x.date === r.date && x.time === r.time && x.rank === r.rank && x.total === r.total && x.kind === r.kind && x.note === r.note) === i);
+  const unique = rows.filter((r, i) => rows.findIndex(x => r.ordered ? x.id === r.id : x.date === r.date && x.time === r.time && x.rank === r.rank && x.total === r.total && x.kind === r.kind && x.note === r.note) === i);
   for (const date of [...new Set(unique.map(r => r.date))]) {
     const ranked = unique.filter(r => r.date === date && r.rank !== undefined).sort((a, b) => a.time - b.time);
     let previous: Observation | undefined;

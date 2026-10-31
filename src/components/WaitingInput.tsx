@@ -12,7 +12,7 @@ export function WaitingInput({ now, values, setValues, onPredict, loading, progr
     <fieldset className="tolerance-field"><legend>도착 후 이만큼 기다릴 수 있어요</legend><div className="segmented">{[5,10,15].map(v => <button type="button" key={v} aria-pressed={values.tolerance === v} className={values.tolerance === v ? 'active' : ''} onClick={() => set('tolerance', v)}>{v}분</button>)}</div></fieldset>
     <p className="field-hint">호출 후 유예는 3분이에요. 도착 3분 전부터 도착 후 {values.tolerance}분까지의 호출을 성공으로 계산해요.</p>
     {error && <p role="alert" className="form-error">{error}</p>}
-    <button type="submit" className="primary-button" disabled={loading || !!error}>{loading ? <><LoaderCircle className="spin" size={18}/>계산 중 {Math.round(progress * 100)}%</> : <>다시 예측하기<ArrowRight size={19}/></>}</button>
-    <p className="input-note">{demo ? '실측 예시' : '현재'} {clock(now)} 기준 · 입력하면 자동으로 계산해요.</p>
+    <button type="submit" className="primary-button" disabled={loading || !!error}>{loading ? <><LoaderCircle className="spin" size={18}/>계산 중 {Math.round(progress * 100)}%</> : <>예측하기<ArrowRight size={19}/></>}</button>
+    <p className="input-note">{demo ? '실측 예시' : '현재'} {clock(now)} 기준 · 예측하기를 눌러야 계산해요.</p>
   </form><div className="privacy-note"><span className="status-dot"/>입력값은 이 브라우저에만 저장돼요.</div></section>;
 }

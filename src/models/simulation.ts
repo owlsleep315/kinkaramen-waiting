@@ -1,13 +1,16 @@
 import { MODEL, KINKA_POSTERIOR } from './modelConstants';
 import { localModel, rankRate, validateRank } from './waitingModel';
-import { sampleRate, type Posterior } from './intervalModel';
+import { BEHAVIOR, sampleRate, type Posterior } from './intervalModel';
 import type { Observation } from './observations';
 import { randomFromSeed, empiricalQuantile } from '../utils/probability';
 export interface SimulationInput {
   rank: number; now: number; mode?: 'kinka' | 'other'; date?: string;
   observations?: Observation[]; seed?: number; iterations?: number;
 }
-export interface ModelInfo { service: number; minutes: number; count: number; intervals: number; excluded: number; otherDates: number; future: number }
+export interface ModelInfo {
+  service: number; minutes: number; count: number; intervals: number; excluded: number; otherDates: number; future: number;
+  cancellation: number; defer: number; crossing: number; stepMinutes: number[];
+}
 export interface CallSimulation {
   input: SimulationInput; iterations: number; calls: Float64Array[]; rankTimes: Float64Array[];
   end: number; censorReason: 'horizon'; posterior: Posterior; modelInfo: ModelInfo;
@@ -33,7 +36,12 @@ export function createSimulation(input: SimulationInput): CallSimulation {
   if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100_000) throw new Error('Invalid simulation size');
   const local = input.mode === 'other' ? localModel(input.observations ?? [], input.date ?? '', input.now) : null;
   const posterior = local?.posterior ?? KINKA_POSTERIOR;
-  const modelInfo = { service: posterior.mean, minutes: local?.minutes ?? 0, count: local?.count ?? 0, intervals: local?.intervals ?? 0, excluded: local?.excluded ?? 0, otherDates: local?.otherDates ?? 0, future: local?.future ?? 0 };
+  const modelInfo: ModelInfo = {
+    service: posterior.mean, minutes: local?.minutes ?? 0, count: local?.count ?? 0, intervals: local?.intervals ?? 0,
+    excluded: local?.excluded ?? 0, otherDates: local?.otherDates ?? 0, future: local?.future ?? 0,
+    cancellation: BEHAVIOR.cancellation, defer: BEHAVIOR.defer, crossing: BEHAVIOR.crossing,
+    stepMinutes: Array.from({ length: MODEL.maxRank }, (_, i) => posterior.rates.reduce((sum, rate, j) => sum + posterior.weights[j] / rankRate(i + 1, rate), 0)),
+  };
   return {
     input: { ...input }, iterations, end: Math.min(1440, input.now + MODEL.horizonMinutes), censorReason: 'horizon', posterior, modelInfo,
     rankTimes: Array.from({ length: input.rank - 1 }, () => new Float64Array(iterations).fill(Infinity)),

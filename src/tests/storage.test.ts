@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultState, loadState, saveState, updateRecord, removeRecord, latestRecord, STORAGE_KEY, formError } from '../state/storage';
+import { appendPredictionRecord, defaultState, loadState, saveState, removeRecord, latestRecord, STORAGE_KEY, formError } from '../state/storage';
 import { localModel } from '../models/waitingModel';
 import type { Observation } from '../models/observations';
 import { clock, parseTime, seoulDate, seoulMinutes } from '../utils/time';
@@ -10,12 +10,41 @@ describe('browser records', () => {
     const state = { ...defaultState(), tab: 'other' as const, records: [row] };
     expect(saveState(storage, state)).toBe(true); expect(loadState(storage).state).toEqual(state); expect(data.has(STORAGE_KEY)).toBe(true);
   });
-  it('edit/delete updates local evidence and latest rank', () => {
-    const rows = updateRecord([row], { ...row, id: 'b', time: 740, rank: 16 });
-    const edited = updateRecord(rows, { ...rows[1], rank: 12 });
-    expect(localModel(edited, row.date, 750).count).toBe(8);
-    expect(latestRecord(edited, row.date, 750)?.rank).toBe(12);
-    expect(localModel(removeRecord(edited, 'b'), row.date, 750).intervals).toBe(0);
+  it('appends predictions without modifying previous records and supports deletion', () => {
+    const rows = appendPredictionRecord([row], row.date, 740, 16, 'b');
+    expect(rows[0]).toEqual(row);
+    expect(localModel(rows, row.date, 750).count).toBe(4);
+    expect(latestRecord(rows, row.date, 750)?.rank).toBe(16);
+    expect(localModel(removeRecord(rows, 'b'), row.date, 750).intervals).toBe(0);
+    expect(() => appendPredictionRecord(rows, row.date, 750, 12, 'b')).toThrow();
+  });
+  it('classifies increases as deferral, excludes the mixed interval, then resumes learning', () => {
+    const deferred = appendPredictionRecord([row], row.date, 740, 24, 'b');
+    expect(deferred[1].kind).toBe('self-defer');
+    expect(localModel(deferred, row.date, 750).intervals).toBe(0);
+    const rows = appendPredictionRecord(deferred, row.date, 750, 21, 'c');
+    expect(localModel(rows, row.date, 750)).toMatchObject({ intervals: 1, count: 3, minutes: 10, excluded: 1 });
+  });
+  it('deduplicates consecutive identical observations, preserves ordered same-minute changes', () => {
+    const first = appendPredictionRecord([], row.date, 730, 4, 'a');
+    expect(appendPredictionRecord(first, row.date, 730, 4, 'b')).toBe(first);
+    const deferred = appendPredictionRecord(first, row.date, 730, 6, 'c');
+    const back = appendPredictionRecord(deferred, row.date, 730, 4, 'd');
+    expect(back.map(r => r.rank)).toEqual([4, 6, 4]);
+    expect(back[1].kind).toBe('self-defer');
+    expect(localModel(back, row.date, 730).intervals).toBe(0);
+    const later = appendPredictionRecord(back, row.date, 735, 3, 'e');
+    expect(localModel(later, row.date, 735)).toMatchObject({ count: 1, minutes: 5, intervals: 1 });
+  });
+  it('records unchanged ranks after time passes and ignores previous dates/future rows for deferral', () => {
+    const unchanged = appendPredictionRecord([row], row.date, 740, 20, 'b');
+    expect(localModel(unchanged, row.date, 740)).toMatchObject({ count: 0, minutes: 10, intervals: 1 });
+    expect(appendPredictionRecord([row], '2026-10-31', 740, 30, 'b').at(-1)?.kind).toBe('observation');
+    expect(appendPredictionRecord([row], row.date, 720, 30, 'b')[0].kind).toBe('observation');
+  });
+  it('rejects invalid prediction records', () => {
+    for (const rank of [0, 151, NaN, 1.5]) expect(() => appendPredictionRecord([], row.date, 730, rank, 'a')).toThrow();
+    for (const time of [-1, 1440, NaN]) expect(() => appendPredictionRecord([], row.date, time, 4, 'a')).toThrow();
   });
   it('new waiting reset has no old data and Kinka inputs stay separate', () => {
     const state = defaultState(); state.kinka.rank = '33'; state.records = [row];

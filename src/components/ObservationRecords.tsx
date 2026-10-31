@@ -1,38 +1,19 @@
-import { useEffect, useState } from 'react';
-import { Plus, RotateCcw, Pencil, Trash2 } from 'lucide-react';
-import { clock, parseTime, timeValue } from '../utils/time';
-import { latestRecord, removeRecord, updateRecord } from '../state/storage';
+import { RotateCcw, Trash2 } from 'lucide-react';
+import { clock } from '../utils/time';
+import { removeRecord } from '../state/storage';
 import type { Observation } from '../models/observations';
-import { validateRank } from '../models/waitingModel';
-let nextId = 0;
-export function ObservationRecords({ rows, now, date, rank, onChange }: { rows: Observation[]; now: number; date: string; rank: string; onChange: (rows: Observation[], rank?: string) => void }) {
-  const [time, setTime] = useState(timeValue(now)), [value, setValue] = useState(rank), [kind, setKind] = useState<'observation' | 'self-defer'>('observation');
-  const [editing, setEditing] = useState<Observation | null>(null), [error, setError] = useState(''), [manualTime, setManualTime] = useState(false);
-  useEffect(() => { if (!editing && !manualTime) setTime(timeValue(now)); }, [now, editing, manualTime]);
-  function reset() { setEditing(null); setTime(timeValue(now)); setKind('observation'); setManualTime(false); setError(''); }
-  function change(next: Observation[]) { onChange(next, latestRecord(next, date, now)?.rank?.toString()); }
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const t = parseTime(time), r = Number(value), day = editing?.date ?? date;
-    const problem = validateRank(r);
-    if (problem) return setError(problem);
-    if (!Number.isFinite(t) || (day === date && t > now)) return setError('관측 시각은 현재까지 확인한 시간으로 입력해 주세요.');
-    if (rows.some(row => row.id !== editing?.id && row.date === day && row.time === t)) return setError('같은 분의 기록이 있어요. 기존 기록을 수정하거나 다음 분에 추가해 주세요.');
-    const row: Observation = { id: editing?.id ?? `observation-${Date.now()}-${++nextId}-${Math.random().toString(36).slice(2)}`, date: day, time: t, rank: r, kind };
-    change(updateRecord(rows, row)); reset();
-  }
+
+export function ObservationRecords({ rows, date, onChange }: { rows: Observation[]; date: string; onChange: (rows: Observation[]) => void }) {
   return <section className="card records-card" aria-labelledby="records-heading">
-    <div className="chart-heading"><div><h2 id="records-heading">내 순서 기록</h2><p>순서가 바뀔 때마다 추가해 주세요.</p></div><span className="soft-badge">{rows.length}개 기록</span></div>
-    <form onSubmit={submit} className="record-form">
-      {editing && <p className="record-editing">{editing.date} 기록 수정 중</p>}
-      <div className="two-fields"><label>관측 시각<input aria-label="관측 시각" type="time" required value={time} onChange={e => { setTime(e.target.value); setManualTime(true); }} onInput={e => { setTime(e.currentTarget.value); setManualTime(true); }}/></label><label>관측한 내 순서<input aria-label="관측한 내 순서" type="number" inputMode="numeric" min="1" max="150" required value={value} onChange={e => setValue(e.target.value)}/></label></div>
-      <label className="defer-check"><input type="checkbox" checked={kind === 'self-defer'} onChange={e => setKind(e.target.checked ? 'self-defer' : 'observation')}/>내가 직접 순서를 미뤘어요</label>
-      {error && <p role="alert" className="form-error">{error}</p>}
-      <div className="record-actions"><button className="record-add" type="submit"><Plus size={15}/>{editing ? '수정 저장' : '기록 추가'}</button>{editing && <button type="button" onClick={reset}>수정 취소</button>}</div>
-    </form>
-    <p className="field-hint">시각은 자동 입력돼요. 직접 미루기까지의 구간은 속도 계산에서 제외해요.</p>
-    {rows.length ? <div className="table-scroll"><table><caption className="sr-only">저장된 순서 관측</caption><thead><tr><th>확인한 시각</th><th>내 순서</th><th>관리</th></tr></thead><tbody>{[...rows].reverse().map(row => <tr key={row.id}><td>{row.date !== date && <small>{row.date}<br/></small>}{clock(row.time)}{row.kind === 'self-defer' && <small className="defer-label">직접 미룸</small>}</td><td>{row.rank}번째</td><td><button className="icon-button" aria-label={`${row.date} ${clock(row.time)} 기록 수정`} onClick={() => { setEditing(row); setTime(timeValue(row.time)); setValue(String(row.rank)); setKind(row.kind === 'self-defer' ? 'self-defer' : 'observation'); setError(''); }}><Pencil size={14}/></button><button className="icon-button" aria-label={`${row.date} ${clock(row.time)} 기록 삭제`} onClick={() => { change(removeRecord(rows, row.id)); if (editing?.id === row.id) reset(); }}><Trash2 size={14}/></button></td></tr>)}</tbody></table></div> : <p className="records-empty">기록이 없어도 킨카라멘 기준으로 예측해요.<br/>두 번째 기록부터 이곳의 속도를 반영해요.</p>}
-    {rows.length > 0 && <button className="reset-records" onClick={() => { if (window.confirm('저장된 순서 기록을 모두 지우고 새 웨이팅을 시작할까요?')) { onChange([]); reset(); } }}><RotateCcw size={13}/>기록 초기화</button>}
-    <p className="input-note">이 브라우저에 저장돼요. 새 방문은 기록을 초기화해 주세요.<br/>지난 날짜의 기록은 보관만 하며 오늘 예측에는 섞지 않아요.</p>
+    <div className="chart-heading"><div><h2 id="records-heading">내 순서 기록</h2><p>예측을 완료하면 자동으로 저장해요.</p></div><span className="soft-badge">{rows.length}개 기록</span></div>
+    <ol className="records-guide">
+      <li>현재 내 순서와 도착시간을 입력하고 <strong>예측하기</strong>를 눌러 주세요. 그때의 시각과 순서가 기록돼요.</li>
+      <li>순서가 바뀌면 다시 예측해 주세요. 이전보다 숫자가 커지면 <strong>미루기로 판단</strong>해요. 예를 들어 4 → 6번째면 해당 구간은 속도 계산에서 제외해요.</li>
+      <li>기록을 직접 추가하거나 수정할 수는 없어요. 잘못된 기록은 <strong>삭제</strong>하고 올바른 현재 순서로 다시 예측해 주세요.</li>
+    </ol>
+    <p className="field-hint">같은 분·같은 순서로 연속 예측하면 중복 저장하지 않아요. 같은 분의 순서 변화는 보관하지만, 시간이 흐른 구간부터 속도에 반영해요.</p>
+    {rows.length ? <div className="table-scroll"><table><caption className="sr-only">예측으로 자동 저장된 순서 기록</caption><thead><tr><th>확인한 시각</th><th>내 순서</th><th>관리</th></tr></thead><tbody>{[...rows].reverse().map(row => <tr key={row.id}><td>{row.date !== date && <small>{row.date}<br/></small>}{clock(row.time)}{row.kind === 'self-defer' && <small className="defer-label">미루기로 판단</small>}</td><td>{row.rank}번째</td><td><button className="icon-button" aria-label={`${row.date} ${clock(row.time)} ${row.rank}번째 기록 삭제`} onClick={() => onChange(removeRecord(rows, row.id))}><Trash2 size={14}/></button></td></tr>)}</tbody></table></div> : <p className="records-empty">첫 예측은 킨카라멘 기준을 사용해요.<br/>시간 차이가 있는 유효 기록이 쌓이면 이곳의 속도를 반영해요.</p>}
+    {rows.length > 0 && <button className="reset-records" onClick={() => { if (window.confirm('저장된 순서 기록을 모두 지우고 새 웨이팅을 시작할까요?')) onChange([]); }}><RotateCcw size={13}/>기록 초기화</button>}
+    <p className="input-note">이 브라우저에 저장돼요. 다른 매장으로 옮기거나 새로 방문하면 기록을 초기화해 주세요. 지난 날짜 기록은 오늘 예측에 섞지 않아요. 삭제한 내용은 다음 예측부터 반영돼요.</p>
   </section>;
 }
