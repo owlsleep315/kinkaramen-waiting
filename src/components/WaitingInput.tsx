@@ -10,9 +10,9 @@ export function WaitingInput({ now, values, setValues, onPredict, loading, progr
     <label>내 순서<div className="number-field"><input id="rank" aria-label="내 순서" type="number" inputMode="numeric" min="1" max={MODEL.maxRank} value={values.rank} onChange={e => set('rank', e.target.value)}/><span>번째</span></div></label>
     <label className="time-label" htmlFor="target">언제 도착하나요?</label><div className="time-field"><Clock3 size={20}/><input id="target" aria-label="도착시간" type="time" required value={values.target} onChange={e => set('target', e.target.value)} onInput={e => set('target', e.currentTarget.value)}/></div>
     <fieldset className="tolerance-field"><legend>도착 후 이만큼 기다릴 수 있어요</legend><div className="segmented">{[5,10,15].map(v => <button type="button" key={v} aria-pressed={values.tolerance === v} className={values.tolerance === v ? 'active' : ''} onClick={() => set('tolerance', v)}>{v}분</button>)}</div></fieldset>
-    <p className="field-hint">호출 후 유예는 3분이에요. 도착 3분 전부터 도착 후 {values.tolerance}분까지의 호출을 성공으로 계산해요.</p>
+    <p className="field-hint">도착 3분 전부터 도착 후 {values.tolerance}분까지의 호출을 성공으로 계산해요.</p>
     {error && <p role="alert" className="form-error">{error}</p>}
     <button type="submit" className="primary-button" disabled={loading || !!error}>{loading ? <><LoaderCircle className="spin" size={18}/>계산 중 {Math.round(progress * 100)}%</> : <>예측하기<ArrowRight size={19}/></>}</button>
     <p className="input-note">{demo ? '실측 예시' : '현재'} {clock(now)} 기준 · 예측하기를 눌러야 계산해요.</p>
-  </form><div className="privacy-note"><span className="status-dot"/>입력값은 이 브라우저에만 저장돼요.</div></section>;
+  </form></section>;
 }
