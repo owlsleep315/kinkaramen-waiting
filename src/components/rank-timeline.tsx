@@ -13,7 +13,7 @@ export function RankTimeline({rank, now, milestones}: {rank:number; now:number; 
           <span className="timeline-wait">{item.mean === null ? '계산 범위 내 미도달 포함' : `약 ${Math.max(0,Math.round(item.mean-now))}분 후`}</span>
         </li>)}
       </ol>
-      <p className="timeline-note">입장·취소·미루기를 반영한 예상이에요. 1번째가 된 뒤에도 호출을 기다릴 수 있어요.</p>
-    </> : <p className="timeline-empty">이미 1번째예요. 다음 호출을 기다리는 중이며, 예상 호출시간은 위에서 확인할 수 있어요.</p>}
+      <p className="timeline-note">입장·취소·미루기를 반영한 예상이에요.</p>
+    </> : <p className="timeline-empty">이미 1번째예요. 입장 호출을 기다리는 중이며, 예상 호출시간은 위에서 확인할 수 있어요.</p>}
   </section>;
 }
