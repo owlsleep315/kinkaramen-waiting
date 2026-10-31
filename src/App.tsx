@@ -105,7 +105,7 @@ export default function App() {
         </div>
       </div>
       <div id="model"><ModelExplanation/></div>
-      <footer><span className="footer-brand"><Soup size={17}/>웨이팅 순서 예측</span><span>예측은 참고로, 맛있는 시간은 여유롭게.</span><small>기록은 브라우저에 저장되며 서버로 전송하지 않아요. 브라우저 데이터 삭제 시 사라질 수 있어요. <a href={`${import.meta.env.BASE_URL}kinkaramen-waiting-source.zip`} download>전체 소스코드 받기 ↗</a></small><button className="reset-records" onClick={() => { if (window.confirm('입력값과 이 앱의 모든 순서 기록을 초기화할까요?')) { clear(); setDemo(false); setSaved(defaultState()); setWritable(true); setWarning(''); } }}>입력값·기록 전체 초기화</button></footer>
+      <footer><span className="footer-brand"><Soup size={17}/>웨이팅 순서 예측</span><span>기다림은 짧게, 내 시간은 길게.</span><small>기록은 브라우저에 저장되며 서버로 전송하지 않아요. 브라우저 데이터 삭제 시 사라질 수 있어요. <a href={`${import.meta.env.BASE_URL}kinkaramen-waiting-source.zip`} download>전체 소스코드 받기 ↗</a></small><button className="reset-records" onClick={() => { if (window.confirm('입력값과 이 앱의 모든 순서 기록을 초기화할까요?')) { clear(); setDemo(false); setSaved(defaultState()); setWritable(true); setWarning(''); } }}>입력값·기록 전체 초기화</button></footer>
     </main>
   </div>;
 }
